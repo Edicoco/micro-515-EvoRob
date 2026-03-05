@@ -1,4 +1,5 @@
 import xml.etree.ElementTree as xml
+import os
 from os.path import join
 from tempfile import TemporaryDirectory
 
@@ -133,17 +134,18 @@ def main():
 
     results_dir = join(ROOT_DIR, "results", ENV_NAME, "EA")
     results_dir = get_distinct_filename(results_dir)
+    # os.makedirs(results_dir, exist_ok=True)
 
     opts = ES_opts.copy()
     opts["min"] = 0
     opts["max"] = 0.5
-    opts["num_parents"] = 20
-    opts["num_generations"] = 200
+    opts["num_parents"] = 10
+    opts["num_generations"] = 100
     opts["mutation_sigma"] = 0.3
     opts["min_sigma"] = 0.1
     opts["sigma_decay_rate"] = 0.95
 
-    population_size = 200
+    population_size = 100
 
     ea = ES(population_size, n_parameters, opts, log_every=2, output_dir=results_dir)
 
@@ -154,7 +156,7 @@ def main():
         for index, genotype in enumerate(pop):
             fit_ind = world.evaluate_individual(genotype)
             fitnesses_gen[index] = fit_ind
-        ea.tell(pop, fitnesses_gen)
+        ea.tell(pop, fitnesses_gen, log=True if ea.log_every else False)
 
     #%% visualise
     checkpoint = get_last_checkpoint_dir(results_dir)
@@ -166,7 +168,6 @@ def main():
         env=world.create_env(),
         video_name=video_name
     )
-
 
 if __name__ == '__main__':
     main()
