@@ -230,7 +230,9 @@ def run_evolution_neural_controller(
         fitness = np.empty(len(population))
 
         for i, individual in enumerate(population):
-            fitness[i] = world.evaluate_individual(individual)
+            # fitness[i] = world.evaluate_individual(individual)
+            scores = [world.evaluate_individual(individual) for _ in range(3)]
+            fitness[i] = np.mean(scores)
 
         # Tell EA the results
         save_checkpoint = (generation % ckpt_interval == 0) or (
@@ -437,8 +439,8 @@ if __name__ == "__main__":
     # Uncomment to run full evolution:
     run_evolution_neural_controller(
         num_generations=100,
-        population_size=10,
-        ckpt_interval=5,
+        population_size=128,
+        ckpt_interval=10,
         checkpoint_path=None,
         run_evaluation=True,
         compute_score=True,
@@ -452,4 +454,8 @@ if __name__ == "__main__":
     # ----------------------------------------------------------------
     # evaluate_checkpoint(
     #     checkpoint_dir="results/20260304_174619_neural_controller_ckpts",
+<<<<<<< HEAD
     # )
+=======
+    # )
+>>>>>>> 1e92b08 (updates)
