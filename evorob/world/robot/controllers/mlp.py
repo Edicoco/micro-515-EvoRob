@@ -34,23 +34,18 @@ class NeuralNetworkController(Controller):
         self.input_to_hidden = np.random.uniform(low=-1.0, high=1.0, size=(self.n_hidden, self.n_input))
         self.hidden_to_output = np.random.uniform(low=-1.0, high=1.0, size=(self.n_output, self.n_hidden))
 
-        self.bias_hidden = np.zeros(self.n_hidden)
-        self.bias_output = np.zeros(self.n_output)
+        # self.bias_hidden = np.zeros(self.n_hidden)
+        # self.bias_output = np.zeros(self.n_output)
 
         # TODO: Compute number of parameters in each layer
-<<<<<<< HEAD
-        self.n_params_i2h = ...  # TODO!
-        self.n_params_h2o = ...  # TODO!
-=======
         # - self.n_params_i2h = input_size * hidden_size
         # - self.n_params_h2o = hidden_size * output_size
         self.n_params_i2h = self.n_hidden * self.n_input  
         self.n_params_h2o = self.n_output * self.n_hidden 
 
         # Nombre de biais
-        self.n_bias_hidden = self.n_hidden 
-        self.n_bias_output = self.n_output
->>>>>>> 1e92b08 (updates)
+        self.n_bias_hidden = 0 # self.n_hidden 
+        self.n_bias_output = 0 # self.n_output
 
         self.n_params = self.get_num_params()
 
@@ -65,15 +60,15 @@ class NeuralNetworkController(Controller):
             action: Output array, shape (output_size,) or (batch_size, output_size)
         """
         # TODO: Perform forward pass computation
-        # 1. Hidden layer: hidden = ...
-        # 2. Output layer: output = ...
+        # 1. Hidden layer: hidden = tanh(state @ input_to_hidden.T)
+        # 2. Output layer: output = tanh(hidden @ hidden_to_output.T)
         # 3. Clip output to [-1, 1] using np.clip()
         #
         # Hint: Use @ operator or np.matmul for matrix multiplication
         # Hint: .T transposes a matrix
         # Hint: np.tanh() applies tanh element-wise
-        hidden = np.tanh(state @ self.input_to_hidden.T + self.bias_hidden)
-        output = np.tanh(hidden @ self.hidden_to_output.T + self.bias_output)
+        hidden = np.tanh(state @ self.input_to_hidden.T ) # + self.bias_hidden
+        output = np.tanh(hidden @ self.hidden_to_output.T ) # + self.bias_output
         action = np.clip(output, -1.0, 1.0)
         return action 
 
@@ -93,7 +88,7 @@ class NeuralNetworkController(Controller):
         # Hint: Use np.reshape(array, (rows, cols)) or array.reshape((rows, cols))
         assert len(encoding) == self.n_params, f"Expected {self.n_params} parameters, got {len(encoding)}"
         
-        """
+        
         i2h_weights = encoding[:self.n_params_i2h].reshape((self.n_hidden, self.n_input))
         h2o_weights = encoding[self.n_params_i2h:].reshape((self.n_output, self.n_hidden))
         self.input_to_hidden = i2h_weights
@@ -110,6 +105,7 @@ class NeuralNetworkController(Controller):
         idx += self.n_bias_hidden
         
         self.bias_output = encoding[idx : idx + self.n_bias_output]
+        """
         return
 
     def geno2pheno(self, genotype):
@@ -119,14 +115,9 @@ class NeuralNetworkController(Controller):
     def get_num_params(self):
         # To provide a genetic encoding for our neural network controller,
         # we compute and store the number of parameters in our NN class.
-<<<<<<< HEAD
-        # TODO: Return the total number of parameters in both layers!
-        raise NotImplementedError
-=======
         # TODO: Return sum of parameters in both layers!
-        return self.n_params_i2h + self.n_params_h2o + self.n_bias_hidden + self.n_bias_output
+        return self.n_params_i2h + self.n_params_h2o # + self.n_bias_hidden + self.n_bias_output
 
->>>>>>> 1e92b08 (updates)
 
     def reset_controller(self, batch_size=1) -> None:
         pass

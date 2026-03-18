@@ -207,8 +207,8 @@ def replay_checkpoint(checkpoint_path: str) -> None:
 
 if __name__ == "__main__":
     run_reinforcement_learning(
-        total_timesteps=10_000, # recommended: 10_000_000 for good performance
-        num_envs=16,
+        total_timesteps=10_000_000, # recommended: 10_000_000 for good performance
+        num_envs=32,
         batch_size=1024,
         run_evaluation=True,
         checkpoint_path="./results/ppo_ckpts"
