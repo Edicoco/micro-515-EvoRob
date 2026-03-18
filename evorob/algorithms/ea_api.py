@@ -42,19 +42,29 @@ class EvoAlgAPI(EA):
         self.x = None
         self.f = None
 
-        x0 = np.zeros(n_params)        # Initial mean
-        x0 = np.random.uniform(-0.1, 0.1, n_params) # instead of zeros
+        # Initialisation de CMA-ES
+        # x0 = np.random.uniform(-0.2, 0.2, n_params)  
+        x0 = np.load("results/20260318_114454_oscillatory_controller_ckpts/499/x_best.npy") # Meilleure initialisation
+        sigma0 = kwargs.get('sigma0', 0.15)  # Valeur par défaut si non fournie
 
-        sigma0 = 0.5                    # Initial step size
+        """
+        self.es = cma.CMAEvolutionStrategy(
+            x0,
+            sigma0,
+            {
+                'popsize': population_size,  # Utilisez population_size passé à EvoAlgAPI
+                'CMA_diagonal': kwargs.get('CMA_diagonal', False),  # Désactivé par défaut
+                'tolx': kwargs.get('tolx', 1e-6),
+                'tolfun': kwargs.get('tolfun', 1e-6),
+                'verbose': -9,
+            }
+        )
+        """
 
-        self.es = cma.CMAEvolutionStrategy(x0, sigma0, {
-            'popsize': population_size,
-            'CMA_diagonal': True,       # sep-CMA, plus stable en haute dimension
-            'tolx': 1e-4,
-            'tolfun': 1e-4,
-            'tolstagnation': 300,
-            'verbose': -9,
-        })
+        inopts={'popsize': population_size}#, 'seed': 42}
+        self.es = cma.CMAEvolutionStrategy(x0,sigma0,inopts)
+
+        # % 
 
     def ask(self) -> np.ndarray:
         """Sample population from the algorithm.

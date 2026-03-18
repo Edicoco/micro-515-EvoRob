@@ -31,7 +31,10 @@ class OscillatoryController(Controller):
         # - self.frequencies: uniform random in [0.5, 2.0] (shape: output_size)
         # - self.phases: uniform random in [0, 2*pi] (shape: output_size)
         # Hint: Use np.random.uniform(low, high, size)
-        raise NotImplementedError("TODO: Initialize oscillatory parameters")
+        self.amplitudes = np.random.uniform(0.1, 1.0, self.output_size)
+        self.frequencies = np.random.uniform(0.5, 2.0, self.output_size)
+        self.phases = np.random.uniform(0.0, 2 * np.pi, self.output_size)
+        #raise NotImplementedError("TODO: Initialize oscillatory parameters")
 
     def get_action(self, state):
         """Generate oscillatory actions based on time.
@@ -43,14 +46,26 @@ class OscillatoryController(Controller):
             actions: Array of actuator commands, shape (output_size,) or (batch_size, output_size)
         """
         # TODO: Compute oscillatory actions using sine waves
-        # Formula: amplitude * sin(2*pi*frequency*time + phase)
-        # Then increment self.time_step by 0.01
+        # Compute action with parameterized sine wave.
+        # Then increment self.time_step by e.g. 0.01
         # Clip actions to [-1.0, 1.0]
         #
         # For vectorized environments (batch of observations):
         # Check if state is 2D, if so replicate actions for each environment
         # Hint: Use np.tile(actions, (batch_size, 1))
-        raise NotImplementedError("TODO: Implement oscillatory action generation")
+        action = self.amplitudes * np.sin(2 * np.pi * self.frequencies * self.time_step + self.phases)
+
+        self.time_step += 0.01
+
+        action = np.clip(action, -1.0, 1.0)
+        
+        # Handle vectorized environments (batch of states)
+        if isinstance(state, np.ndarray) and state.ndim == 2:
+            batch_size = state.shape[0]
+            action = np.tile(action, (batch_size, 1))
+                             
+        return action
+        #raise NotImplementedError("TODO: Implement oscillatory action generation")
 
     def set_weights(self, weights):
         """Set controller parameters from flat array.
@@ -61,11 +76,16 @@ class OscillatoryController(Controller):
         """
         # TODO: Extract parameters from weights array
         # weights structure: [amp1, amp2, ..., freq1, freq2, ..., phase1, phase2, ...]
-        # - self.amplitudes = weights[0:output_size]
-        # - self.frequencies = 5 * weights[output_size:2*output_size] (scale to ~[0, 5] Hz)
-        # - self.phases = pi * weights[2*output_size:3*output_size] (scale to ~[0, pi])
+        # Update self.amplitudes, self.frequencies, self.phases accordingly
         # Reset time to 0
-        raise NotImplementedError("TODO: Implement parameter setting")
+        
+        n = self.output_size
+        self.amplitudes  = weights[0:n]
+        self.frequencies = 5 * weights[n:2*n]
+        self.phases      = np.pi * weights[2*n:3*n]
+        self.time_step   = 0.0
+
+        #raise NotImplementedError("TODO: Implement parameter setting")
 
     def geno2pheno(self, genotype):
         """Alias for set_weights."""
@@ -79,7 +99,9 @@ class OscillatoryController(Controller):
             int: 3 * output_size (amplitude, frequency, phase for each actuator)
         """
         # TODO: Return the total number of parameters
-        raise NotImplementedError("TODO: Compute number of parameters")
+        return 3 * self.output_size
+    
+        #raise NotImplementedError("TODO: Compute number of parameters")
 
     def reset_controller(self):
         """Reset the controller state (time)."""

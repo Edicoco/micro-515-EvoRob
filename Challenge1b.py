@@ -2,11 +2,18 @@ import datetime
 from pathlib import Path
 from typing import Optional
 
-import numpy as np
+import matplotlib.pyplot as plt
+import imageio
+import os
 
-from evorob.algorithms.ea_api_sol import EvoAlgAPI
+
+import numpy as np
+from wandb import controller
+
+from evorob import world
+from evorob.algorithms.ea_api import EvoAlgAPI
 from evorob.world.ant_world import AntFlatWorld
-from evorob.world.robot.controllers.sinoid_sol import OscillatoryController
+from evorob.world.robot.controllers.sinoid import OscillatoryController
 
 
 def test_exercise_implementation():
@@ -86,6 +93,51 @@ def test_exercise_implementation():
     Controller optimisation: Ant flat terrain
 """
 
+def plot_fitness(full_f, output_dir):
+    """Save a fitness-over-generations plot to the checkpoint directory."""
+    fitness_array = np.array(full_f)  # (n_generations, n_pop)
+    generations = np.arange(1, len(fitness_array) + 1)
+
+    best_per_gen = np.max(fitness_array, axis=1)
+    mean_per_gen = np.mean(fitness_array, axis=1)
+    std_per_gen = np.std(fitness_array, axis=1)
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.plot(
+        generations,
+        best_per_gen,
+        label="Best",
+        color="#B51F1F",
+        linewidth=2,
+        linestyle="--",
+    )
+    ax.plot(
+        generations,
+        mean_per_gen,
+        label="Mean",
+        color="#007480",
+        linewidth=2,
+    )
+    ax.fill_between(
+        generations,
+        mean_per_gen - std_per_gen,
+        mean_per_gen + std_per_gen,
+        alpha=0.2,
+        color="#007480",
+        label="Mean +/- 1 std",
+    )
+    ax.set_xlabel("Generation")
+    ax.set_ylabel("Fitness")
+    ax.set_title("Fitness over Generations")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+
+    plot_path = os.path.join(output_dir, "fitness_plot.pdf")
+    fig.savefig(plot_path)
+    plt.close(fig)
+    print(f"Fitness plot saved to: {plot_path}")
+
 
 def run_evolution_oscillatory_controller(
     num_generations: int,
@@ -150,6 +202,9 @@ def run_evolution_oscillatory_controller(
     if checkpoint_path:
         print(f"Checkpoints saved to {ckpt_dir}")
 
+        # Save fitness plot
+    plot_fitness(ea.full_f, ckpt_dir)
+
     if run_evaluation:
         # Evaluate the trained agent with the same env factory as training
         evaluation_env = world.create_env(render_mode="human")
@@ -185,8 +240,8 @@ if __name__ == "__main__":
 
     # Uncomment to run full evolution:
     run_evolution_oscillatory_controller(
-        num_generations=100,
-        population_size=10, 
+        num_generations=3000,
+        population_size=64, 
         ckpt_interval=5,
         checkpoint_path=None,
         run_evaluation=True,

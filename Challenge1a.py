@@ -117,10 +117,10 @@ def test_exercise_implementation():
     # Test 3: Evolutionary Algorithm
     print("\n[3/3] Testing Evolutionary Algorithm API...")
     try:
-        ea = EvoAlgAPI(n_params=100, population_size=20, sigma=0.5)
+        ea = EvoAlgAPI(n_params=560, population_size=20, sigma=0.5)
         population = ea.ask()
-        assert population.shape == (20, 100), (
-            f"Population shape should be (20, 100), got {population.shape}"
+        assert population.shape == (20, 560), (
+            f"Population shape should be (20, 560), got {population.shape}"
         )
 
         fitnesses = np.random.randn(20)
@@ -231,7 +231,7 @@ def run_evolution_neural_controller(
 
         for i, individual in enumerate(population):
             # fitness[i] = world.evaluate_individual(individual)
-            scores = [world.evaluate_individual(individual) for _ in range(3)]
+            scores = [world.evaluate_individual(individual) for _ in range(5)]
             fitness[i] = np.mean(scores)
 
         # Tell EA the results
@@ -268,7 +268,7 @@ def run_evolution_neural_controller(
 
     if run_evaluation:
         # Evaluate the trained agent with the same env factory as training
-        evaluation_env = world.create_env(render_mode="human")
+        evaluation_env = world.create_env(render_mode="human", n_repeats=1)
 
         evaluation_controller = world.controller
         evaluation_controller.geno2pheno(best_individual)
@@ -438,7 +438,7 @@ if __name__ == "__main__":
 
     # Uncomment to run full evolution:
     run_evolution_neural_controller(
-        num_generations=100,
+        num_generations=3000,
         population_size=128,
         ckpt_interval=10,
         checkpoint_path=None,
@@ -452,6 +452,5 @@ if __name__ == "__main__":
     # on the standard Gymnasium Ant-v5 and get your final score + video.
     # Replace the path with your actual checkpoint folder.
     # ----------------------------------------------------------------
-    # evaluate_checkpoint(
-    #     checkpoint_dir="results/20260304_174619_neural_controller_ckpts",
-    # )
+    evaluate_checkpoint(
+         checkpoint_dir="results/20260304_174619_neural_controller_ckpts",)
