@@ -44,7 +44,7 @@ class EvoAlgAPI(EA):
 
         # Initialisation de CMA-ES
         # x0 = np.random.uniform(-0.2, 0.2, n_params)  
-        x0 = np.load("results/20260318_114454_oscillatory_controller_ckpts/499/x_best.npy") # Meilleure initialisation
+        x0 = np.load("results/20260315_211559_neural_controller_ckpts/2999/x_best.npy") # Meilleure initialisation
         sigma0 = kwargs.get('sigma0', 0.15)  # Valeur par défaut si non fournie
 
         """
