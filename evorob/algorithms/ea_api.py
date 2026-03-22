@@ -43,7 +43,7 @@ class EvoAlgAPI(EA):
         self.f = None
 
         # Initialisation de CMA-ES
-        # x0 = np.random.uniform(-0.2, 0.2, n_params)  
+        # x0 = np.random.uniform(-1, 1, n_params)  
         x0 = np.load("results/20260318_114454_oscillatory_controller_ckpts/499/x_best.npy") # Meilleure initialisation
         sigma0 = kwargs.get('sigma0', 0.15)  # Valeur par défaut si non fournie
 
@@ -91,7 +91,7 @@ class EvoAlgAPI(EA):
         # TODO: Update your EA with the evaluated population
         # Note: Some algorithms minimize, others maximize.
         # Adjust accordingly (negate fitnesses if needed).
-        self.es.tell(self.current_population, -fitnesses)
+        self.es.tell(population, (-fitnesses).tolist())
 
         # After updating the EA, do bookkeeping for checkpointing:
         self.full_f.append(fitnesses)
