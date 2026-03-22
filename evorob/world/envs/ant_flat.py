@@ -137,7 +137,7 @@ class AntFlatEnvironment(MujocoEnv):
         reward_info = {
             "reward_forward": forward_reward,
             "reward_survive": healthy_reward,
-            "reward_ctrl": ctrl_cost,
+            "reward_ctrl": - ctrl_cost,
         }
         return reward, reward_info
 
@@ -145,10 +145,6 @@ class AntFlatEnvironment(MujocoEnv):
         # TODO: Robot should terminate when:
         # - Torso height is below 0.26 or above 1.0
         # Return True if NOT healthy (i.e., should terminate)
-<<<<<<< HEAD
-        # Hint: Use self.state_vector() to get current state.
-        raise NotImplementedError("TODO: Implement termination function")
-=======
         # Hint: Use self.state_vector() to get current state
         state = self.state_vector()
         if not np.isfinite(state).all():
@@ -156,4 +152,3 @@ class AntFlatEnvironment(MujocoEnv):
         if state[2] < 0.26 or state[2] > 1.0:
             return True
         return False
->>>>>>> 1e92b08 (updates)
