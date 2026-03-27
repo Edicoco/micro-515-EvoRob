@@ -30,14 +30,22 @@ class NeuralNetworkController(Controller):
         # - self.input_to_hidden: shape (hidden_size, input_size)
         # - self.hidden_to_output: shape (output_size, hidden_size)
         # Hint: Use np.random.uniform(-1, 1, (rows, cols))
-        self.input_to_hidden = ...  # TODO!
-        self.hidden_to_output = ...  # TODO!
+
+        self.input_to_hidden = np.random.uniform(low=-1.0, high=1.0, size=(self.n_hidden, self.n_input))
+        self.hidden_to_output = np.random.uniform(low=-1.0, high=1.0, size=(self.n_output, self.n_hidden))
+
+        # self.bias_hidden = np.zeros(self.n_hidden)
+        # self.bias_output = np.zeros(self.n_output)
 
         # TODO: Compute number of parameters in each layer
         # - self.n_params_i2h = input_size * hidden_size
         # - self.n_params_h2o = hidden_size * output_size
-        self.n_params_i2h = ...  # TODO!
-        self.n_params_h2o = ...  # TODO!
+        self.n_params_i2h = self.n_hidden * self.n_input  
+        self.n_params_h2o = self.n_output * self.n_hidden 
+
+        # Nombre de biais
+        self.n_bias_hidden = 0 # self.n_hidden 
+        self.n_bias_output = 0 # self.n_output
 
         self.n_params = self.get_num_params()
 
@@ -59,7 +67,10 @@ class NeuralNetworkController(Controller):
         # Hint: Use @ operator or np.matmul for matrix multiplication
         # Hint: .T transposes a matrix
         # Hint: np.tanh() applies tanh element-wise
-        raise NotImplementedError("TODO: Implement forward pass")
+        hidden = np.tanh(state @ self.input_to_hidden.T ) # + self.bias_hidden
+        output = np.tanh(hidden @ self.hidden_to_output.T ) # + self.bias_output
+        action = np.clip(output, -1.0, 1.0)
+        return action 
 
     def set_weights(self, encoding):
         """Set network weights from a flat parameter vector.
@@ -75,7 +86,27 @@ class NeuralNetworkController(Controller):
         #
         # Hint: Use array slicing: encoding[:n] and encoding[n:]
         # Hint: Use np.reshape(array, (rows, cols)) or array.reshape((rows, cols))
-        raise NotImplementedError("TODO: Implement weight setting")
+        assert len(encoding) == self.n_params, f"Expected {self.n_params} parameters, got {len(encoding)}"
+        
+        
+        i2h_weights = encoding[:self.n_params_i2h].reshape((self.n_hidden, self.n_input))
+        h2o_weights = encoding[self.n_params_i2h:].reshape((self.n_output, self.n_hidden))
+        self.input_to_hidden = i2h_weights
+        self.hidden_to_output = h2o_weights 
+        """
+        idx = 0
+        self.input_to_hidden = encoding[idx : idx + self.n_params_i2h].reshape((self.n_hidden, self.n_input))
+        idx += self.n_params_i2h
+        
+        self.hidden_to_output = encoding[idx : idx + self.n_params_h2o].reshape((self.n_output, self.n_hidden))
+        idx += self.n_params_h2o
+        
+        self.bias_hidden = encoding[idx : idx + self.n_bias_hidden]
+        idx += self.n_bias_hidden
+        
+        self.bias_output = encoding[idx : idx + self.n_bias_output]
+        """
+        return
 
     def geno2pheno(self, genotype):
         """Alias for set_weights (genotype to phenotype mapping)."""
@@ -85,7 +116,8 @@ class NeuralNetworkController(Controller):
         # To provide a genetic encoding for our neural network controller,
         # we compute and store the number of parameters in our NN class.
         # TODO: Return sum of parameters in both layers!
-        raise NotImplementedError
+        return self.n_params_i2h + self.n_params_h2o # + self.n_bias_hidden + self.n_bias_output
+
 
     def reset_controller(self, batch_size=1) -> None:
         pass

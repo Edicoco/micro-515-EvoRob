@@ -46,10 +46,12 @@ class NSGAII(EA):
             n_opt_params: int,
             n_parents: int = 16,
             num_generations: int = 100,
-            bounds: Tuple[float, float] = (-4, 4),
-            mutation_prob: float = 0.3,
-            crossover_prob: float = 0.1,
+            bounds: Tuple[float, float] = (-3, 3),
+            mutation_prob: float = 0.45,
+            crossover_prob: float = 0.3,
             output_dir: str = "./results/NSGA",
+            pretrained_path: str = None,   # ← ajout
+            noise_std: float = 0.2,        # ← ajout
     ) -> None:
         """
         Initializes the NSGA-II algorithm.
@@ -62,6 +64,8 @@ class NSGAII(EA):
         :param mutation_prob: mutation probability
         :param crossover_prob: crossover probability
         :param output_dir: output directory for checkpoints
+        :param pretrained_path: optional path to pre-trained weights for initialization
+        :param noise_std: standard deviation of noise added to pre-trained weights
         """
         # % EA options
         self.n_params = n_opt_params
@@ -73,6 +77,8 @@ class NSGAII(EA):
         self.current_gen = 0
         self.mutation_prob = mutation_prob
         self.crossover_prob = crossover_prob
+        self.pretrained_path = pretrained_path
+        self.noise_std = noise_std
 
         # Bookkeeping for checkpointing (used by base EA)
         self.directory_name = output_dir
@@ -94,7 +100,10 @@ class NSGAII(EA):
             np.ndarray: The new population of candidate solutions.
         """
         if self.current_gen == 0:
-            new_population = self.initialise_x0()
+            if self.pretrained_path is not None:
+                new_population = self.precharge()
+            else:
+                new_population = self.initialise_x0()
         else:
             new_population = self.create_children(self.n_pop)
         new_population = np.clip(new_population, self.min, self.max)
@@ -177,6 +186,35 @@ class NSGAII(EA):
         return np.random.uniform(
             low=self.min, high=self.max, size=(self.n_pop, self.n_params)
         )
+    
+    def precharge(self) -> np.ndarray:
+        """Pre-loads a pre-trained vector."""
+        pretrained_weights = np.load(self.pretrained_path)
+
+        # 1 individu = tes poids exacts (élitisme au départ)
+        population = np.empty((self.n_pop, self.n_params))
+        tenth = self.n_pop // 10  # 10% of the population
+        population[0] = pretrained_weights
+
+        # Reste de la population = tes poids + petit bruit gaussien
+        noise_std = self.noise_std / 4  
+        population[1:tenth] = pretrained_weights + np.random.normal(
+            loc=0.0,
+            scale=noise_std,
+            size=(tenth - 1, self.n_params)
+        )
+        
+        # Reste de la population = tes poids + petit bruit gaussien
+        noise_std = self.noise_std  # à tuner — commence petit
+        population[tenth:] = pretrained_weights + np.random.normal(
+            loc=0.0,
+            scale=noise_std,
+            size=(self.n_pop - tenth, self.n_params)
+        )
+        
+        return np.clip(population, self.min, self.max)
+        
+
 
     def create_children(self, population_size: int) -> np.ndarray:
         """Creates offspring using tournament selection, mutation and crossover.
@@ -202,7 +240,8 @@ class NSGAII(EA):
 
         for i in range(population_size):
             # Select parent using tournament selection
-            parent_idx = self.tournament_selection(ranks, crowding, tournament_size=2)
+            # tournament_size : number of individuals to compare in tournament
+            parent_idx = self.tournament_selection(ranks, crowding, tournament_size=3)
 
             # Select 3 different individuals for differential evolution
             r0 = parent_idx
@@ -290,13 +329,13 @@ class NSGAII(EA):
         """
         # TODO: Implement Pareto dominance check
         # Use all() and any() to check the two conditions for dominance
-        
-        raise NotImplementedError(
-            "TODO: Implement dominance check.\n"
-            "Return True if 'individual' dominates 'other_individual'.\n"
-            "See Exercise 2a in challenge2.md for guidance."
-        )
 
+        # Maximization: individual dominates other if >= in all objectives
+        # and strictly > in at least one
+        individual = np.array(individual)
+        other_individual = np.array(other_individual)
+        return np.all(individual >= other_individual) and np.any(individual > other_individual)
+        
     def fast_nondominated_sort(self, fitness: np.ndarray) -> Tuple[List[List[int]], List[int]]:
         """Performs fast non-dominated sorting to rank solutions into Pareto fronts.
         
@@ -308,8 +347,8 @@ class NSGAII(EA):
         
         Args:
             fitness (np.ndarray): Objective values for all solutions.
-                                  Shape: (population_size, n_objectives)
-                                  
+                                Shape: (population_size, n_objectives)
+                                
         Returns:
             Tuple[List[List[int]], List[int]]:
                 - pareto_fronts: List of fronts, each containing solution indices
@@ -325,12 +364,12 @@ class NSGAII(EA):
                 # does individual_a dominate individual_b?
                 if self.dominates(fitness[individual_a], fitness[individual_b]):
                     # TODO: Track that individual_a dominates individual_b
-                    pass  # Replace with your code
+                    domination_lists[individual_a].append(individual_b)
 
                 # does individual_b dominate individual_a?
                 elif self.dominates(fitness[individual_b], fitness[individual_a]):
                     # TODO: Track that individual_a is dominated by individual_b
-                    pass  # Replace with your code
+                    domination_counts[individual_a] += 1
 
             # if solution dominates all
             if domination_counts[individual_a] == 0:
@@ -352,7 +391,10 @@ class NSGAII(EA):
                 for individual_b in domination_lists[individual_a]:
                     # TODO: Update domination count and check if individual_b
                     # should be added to the next front
-                    pass  # Replace with your code
+                    domination_counts[individual_b] -= 1
+                    if domination_counts[individual_b] == 0:
+                        population_rank[individual_b] = i + 1
+                        next_front.append(individual_b)
 
             i += 1
 
@@ -373,12 +415,12 @@ class NSGAII(EA):
         
         Args:
             fitness (np.ndarray): Objective values for all solutions.
-                                  Shape: (population_size, n_objectives)
+                                Shape: (population_size, n_objectives)
             front (List[int]): Indices of solutions in the current front.
             
         Returns:
             np.ndarray: Crowding distance for each solution in the front.
-                       Shape: (len(front),)
+                    Shape: (len(front),)
         """
         n_solutions = len(front)
         n_objectives = fitness.shape[1]
@@ -390,20 +432,36 @@ class NSGAII(EA):
         # 1. Sort the front by that objective
         # 2. Assign infinite distance to boundary solutions
         # 3. Compute normalized distance for interior solutions
-        
-        raise NotImplementedError(
-            "TODO: Implement crowding distance calculation.\n"
-            "See Exercise 2c in challenge2.md for guidance."
-        )
+        for obj in range(n_objectives):
+            obj_values = np.array([fitness[idx][obj] for idx in front])
+
+            sorted_order = np.argsort(obj_values)
+
+            obj_min = obj_values[sorted_order[0]]
+            obj_max = obj_values[sorted_order[-1]]
+
+            distance[sorted_order[0]] = np.inf
+            distance[sorted_order[-1]] = np.inf
+
+            obj_range = obj_max - obj_min
+            if obj_range == 0:
+                continue
+
+            for k in range(1, n_solutions - 1):
+                prev_val = obj_values[sorted_order[k - 1]]
+                next_val = obj_values[sorted_order[k + 1]]
+                distance[sorted_order[k]] += (next_val - prev_val) / obj_range
+
+        return distance
 
     def crowding_operator(self, individual_idx: int, other_individual_idx: int,
-                          population_rank: List[int], crowding_distances: np.ndarray) -> int:
+                        population_rank: List[int], crowding_distances: np.ndarray) -> int:
         """Compares two individuals based on rank and crowding distance.
         
         The crowding operator defines a partial order on solutions:
         1. If ranks differ, prefer solution with better (lower) rank
         2. If ranks are equal, prefer solution with larger crowding distance
-           (to maintain diversity)
+        (to maintain diversity)
         
         Args:
             individual_idx (int): Index of first individual.
@@ -417,11 +475,18 @@ class NSGAII(EA):
         # TODO: Compare two individuals
         # 1. Prefer lower rank (better Pareto front)
         # 2. If same rank, prefer larger crowding distance
-        
-        raise NotImplementedError(
-            "TODO: Implement crowding operator.\n"
-            "See Exercise 2d in challenge2.md for guidance."
-        )
+        rank_i = population_rank[individual_idx]
+        rank_j = population_rank[other_individual_idx]
+
+        if rank_i < rank_j:
+            return individual_idx
+        elif rank_j < rank_i:
+            return other_individual_idx
+        else:
+            if crowding_distances[individual_idx] >= crowding_distances[other_individual_idx]:
+                return individual_idx
+            else:
+                return other_individual_idx
 
     def tournament_selection(self, population_rank: List[int],
                              crowding_distances: np.ndarray,

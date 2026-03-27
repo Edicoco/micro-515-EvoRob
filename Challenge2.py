@@ -5,10 +5,10 @@ from typing import Optional
 import matplotlib.pyplot as plt
 import numpy as np
 
-from evorob.algorithms.nsga_sol import NSGAII
+from evorob.algorithms.nsga import NSGAII
 from evorob.world.ant_multi_world import AntMultiWorld
 from evorob.world.ant_world import AntFlatWorld
-from evorob.world.robot.controllers.mlp_sol import NeuralNetworkController
+from evorob.world.robot.controllers.mlp import NeuralNetworkController
 
 """ 
     Multi-objective optimisation: Ant two-terrains
@@ -285,11 +285,13 @@ def run_evolution_nsga(
     nsga = NSGAII(
         population_size=population_size,
         n_opt_params=num_params,
-        n_parents=population_size,
-        bounds=(-1, 1),
+        n_parents= population_size,
+        bounds=(-2.5, 2.5),
         mutation_prob=0.3,
-        crossover_prob=0.5,
+        crossover_prob=0.8,
         output_dir=ckpt_dir,
+        pretrained_path= "results/20260327_085804_neural_controller_ckpts/199/x_best.npy",
+        noise_std=0.15,
     )
 
     # Evolution loop
@@ -407,7 +409,7 @@ def plot_pareto_fronts_from_checkpoint(checkpoint_dir: str):
     Loads fitness data from a checkpoint directory and plots Pareto fronts using NSGA-II sorting.
     """
     # Load all generations' fitness data
-    fitness_path = f"{checkpoint_dir}/full_f.npy"
+    fitness_path = f"{checkpoint_dir}/f.npy"
     try:
         all_fitness = np.load(fitness_path)
     except Exception as e:
@@ -452,22 +454,25 @@ def plot_pareto_fronts_from_checkpoint(checkpoint_dir: str):
 if __name__ == "__main__":
     # Run unit tests first
     test_exercise_implementation()
-
+    """
     # Uncomment to run full NSGA-II evolution:
     run_evolution_nsga(
-        num_generations=100,
-        population_size=10,
-        ckpt_interval=5,
+        num_generations=200,
+        population_size=128,
+        ckpt_interval=10,
         checkpoint_path=None,
         random_seed=42,
     )
-
+    
+    """
     # Uncomment to replay your checkpoint
-    # replay_checkpoint(
-    #     checkpoint_path="./results/nsga_multi_terrain_ckpt/99"
-    # )
-
+    replay_checkpoint(
+        checkpoint_path="results/20260322_202655_nsga_ckpts/500"
+    )
+    
     # Uncomment to plot Pareto fronts from checkpoint
-    # plot_pareto_fronts_from_checkpoint(
-    #     checkpoint_dir="./results/nsga_multi_terrain_ckpt/99"
-    # )
+    plot_pareto_fronts_from_checkpoint(
+        checkpoint_dir="results/20260327_100433_nsga_ckpts/199"
+    )
+
+
