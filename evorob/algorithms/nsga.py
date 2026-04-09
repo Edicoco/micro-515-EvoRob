@@ -193,11 +193,11 @@ class NSGAII(EA):
 
         # 1 individu = tes poids exacts (élitisme au départ)
         population = np.empty((self.n_pop, self.n_params))
-        tenth = self.n_pop // 10  # 10% of the population
         population[0] = pretrained_weights
 
         # Reste de la population = tes poids + petit bruit gaussien
         noise_std = self.noise_std / 4  
+        tenth = self.n_pop // 10  # 10% of the population
         population[1:tenth] = pretrained_weights + np.random.normal(
             loc=0.0,
             scale=noise_std,

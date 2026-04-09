@@ -366,8 +366,17 @@ def replay_checkpoint(checkpoint_path: str):
     for i, individual in enumerate(population):
         multi_fitness[i] = world.evaluate_individual(individual)
 
+    # Identify best generalist (best on flat terrain) and best specialist (best on ice terrain)
+    # Select the individual with highest fitness_ice^2 + fintess_flat^2 to find a good trade-off solution
+    
+    trade_off_scores = multi_fitness[:, 1]**2 + multi_fitness[:, 0]**2
+    best_trade_off_idx = np.argmax(trade_off_scores)
+
+
     best_flat_idx = np.argmax(multi_fitness[:, 0])
     best_ice_idx = np.argmax(multi_fitness[:, 1])
+
+    print(f"Best Trade-off Individual: {best_trade_off_idx} with fitness {multi_fitness[best_trade_off_idx]}")
 
     print(
         f"Best Flat Terrain Individual: {best_flat_idx} with fitness {multi_fitness[best_flat_idx]}"
@@ -382,7 +391,17 @@ def replay_checkpoint(checkpoint_path: str):
     plt.title("Multi-Objective Fitness Scatter Plot")
     plt.savefig("fitness_scatter.png")
 
-    n_evals = 5
+    # Generate video for best trade-off individual
+    ant_ice_world = AntFlatWorld()
+    ant_ice_world.generate_best_individual_video(
+        env=ant_ice_world.create_env(
+            robot_path="ant_flat_terrain.xml", width=800, height=608
+        ),
+        video_name=f"best_tradeoff_individual_flat.mp4",
+        controller=ant_ice_world.geno2pheno(population[best_trade_off_idx]),
+    ) 
+
+    n_evals = 0
     for idx_eval in range(n_evals):
         ant_ice_world = AntFlatWorld()
         ant_ice_world.generate_best_individual_video(
@@ -467,12 +486,14 @@ if __name__ == "__main__":
     """
     # Uncomment to replay your checkpoint
     replay_checkpoint(
-        checkpoint_path="results/20260322_202655_nsga_ckpts/500"
+        checkpoint_path="results/20260324_085356_nsga_ckpts/495"
     )
+
+
     
     # Uncomment to plot Pareto fronts from checkpoint
     plot_pareto_fronts_from_checkpoint(
-        checkpoint_dir="results/20260327_100433_nsga_ckpts/199"
+        checkpoint_dir="results/20260324_085356_nsga_ckpts/495"
     )
 
 
