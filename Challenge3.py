@@ -11,7 +11,7 @@ from gymnasium.vector import AsyncVectorEnv
 from tqdm import trange
 
 #TODO: set for cmaes
-from evorob.algorithms.ea_api_sol import EvoAlgAPI
+from evorob.algorithms.ea_api import EvoAlgAPI
 from evorob.algorithms.nsga import NSGAII
 from evorob.utils.filesys import (
     get_distinct_filename,
@@ -19,7 +19,7 @@ from evorob.utils.filesys import (
     get_project_root,
 )
 from evorob.world.base import World
-from evorob.world.robot.controllers.mlp_sol import NeuralNetworkController
+from evorob.world.robot.controllers.mlp import NeuralNetworkController
 from evorob.world.robot.controllers.so2 import SO2Controller
 from evorob.world.robot.controllers.mlp_hebbian import HebbianController
 from evorob.world.robot.morphology.ant_custom_robot import AntRobot
