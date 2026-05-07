@@ -277,7 +277,7 @@ def run_evolution_neural_controller(
 
         for i, individual in enumerate(population):
             # fitness[i] = world.evaluate_individual(individual)
-            scores = [world.evaluate_individual(individual) for _ in range(4)]
+            scores = [world.evaluate_individual(individual) for _ in range(2)]
             fitness[i] = np.mean(scores)
 
         # Tell EA the results
