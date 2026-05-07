@@ -1,0 +1,13 @@
+<mujoco model="terrain">
+  <asset>
+    <hfield name="terrain" file="/Users/edgarcolin/Documents/micro-515-EvoRob/micro-515-EvoRob/evorob/world/envs/assets/terrain.png" nrow="1200" ncol="1200"
+            size="60 60 0.7 0.1"/>
+  </asset>
+
+  <worldbody>
+    <light diffuse=".8 .8 .8" pos="0 0 10" dir="0 0 -1"/>
+    <light diffuse=".3 .3 .3" pos="5 5 5" dir="-1 -1 -1"/>
+    <geom name="terrain" type="hfield" hfield="terrain"
+          pos="0 0 0" rgba="0.6 0.5 0.3 1"/>
+  </worldbody>
+</mujoco>

@@ -459,11 +459,11 @@ if __name__ == "__main__":
     # test_exercise_implementation()
 
     # Uncomment to run full evolution:
-    run_evolution_neural_controller(num_generations=1000,population_size=48,ckpt_interval=10,checkpoint_path=None,run_evaluation=False,compute_score=False,random_seed=42,)
+    # run_evolution_neural_controller(num_generations=1000,population_size=48,ckpt_interval=10,checkpoint_path=None,run_evaluation=False,compute_score=False,random_seed=42,)
 
     # ----------------------------------------------------------------
     # EVALUATION: Uncomment the lines below to evaluate your checkpoint
     # on the standard Gymnasium Ant-v5 and get your final score + video.
     # Replace the path with your actual checkpoint folder.
     # ----------------------------------------------------------------
-    # evaluate_checkpoint(checkpoint_dir="results/20260507_093722_neural_controller_ckpts",)
+    evaluate_checkpoint(checkpoint_dir="results/20260507_115617_neural_controller_ckpts/470",)
