@@ -20,7 +20,7 @@
   <asset>
     <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072"/>
     <hfield name="terrain"
-            file="/Users/edgarcolin/Documents/micro-515-EvoRob/micro-515-EvoRob/evorob/world/envs/assets/terrain.png"
+            file="terrain.png"
             nrow="1200" ncol="1200"
             size="60 60 1.0 0.1"/>
   </asset>
