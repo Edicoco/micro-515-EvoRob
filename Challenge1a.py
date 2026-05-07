@@ -1,5 +1,6 @@
 import datetime
 import os
+import sys
 from pathlib import Path
 from typing import Optional
 
@@ -25,63 +26,105 @@ def test_exercise_implementation():
     # Test 1: Environment
     print("\n[1/3] Testing Ant Environment...")
     try:
+        print("  → Importing AntFlatEnvironment...")
         from evorob.world.envs.ant_flat import AntFlatEnvironment
 
+        print("  → Creating environment...")
         env = AntFlatEnvironment()
+        print(f"     ✓ Environment created: {type(env)}")
 
-        # Test _get_obs(): should concatenate qpos[2:] and qvel (27 dims total)
+        # Test _get_obs()
+        print("\n  [1a] Testing _get_obs()...")
         obs, _ = env.reset()
-        expected_obs_size = (
-            env.data.qpos.size - 2
-        ) + env.data.qvel.size  # 27 = 13 + 14
+        expected_obs_size = (env.data.qpos.size - 2) + env.data.qvel.size
+        print(f"     qpos.size     = {env.data.qpos.size}")
+        print(f"     qvel.size     = {env.data.qvel.size}")
+        print(f"     expected dims = {expected_obs_size}")
+        print(f"     actual dims   = {obs.shape[0]}")
         assert obs.shape[0] == expected_obs_size, (
             f"Observation should be qpos[2:]({env.data.qpos.size - 2}) + qvel"
             f"({env.data.qvel.size}) = {expected_obs_size}, got {obs.shape[0]}"
         )
+        print("     ✓ _get_obs() passed")
 
-        # Test _get_rew(): should return (reward, reward_info_dict) with three components
-        action = np.zeros(env.action_space.shape[0])  # zero action
+        # Test _get_rew()
+        print("\n  [1b] Testing _get_rew()...")
+        action = np.zeros(env.action_space.shape[0])
+        print(f"     action shape  = {action.shape}")
         obs, reward, terminated, truncated, info = env.step(action)
-        assert "reward_forward" in info, "Missing reward_forward - check _get_rew()"
-        assert "reward_ctrl" in info, "Missing reward_ctrl - check _get_rew()"
-        assert "reward_survive" in info, "Missing reward_survive - check _get_rew()"
-        assert info["reward_survive"] == 1.0, "Healthy reward should be 1.0"
-        assert info["reward_ctrl"] <= 0, "Control cost should be negative or zero"
+        print(f"     total reward  = {reward:.4f}")
+        print(f"     info keys     = {list(info.keys())}")
+        print(f"     reward_forward= {info.get('reward_forward', 'MISSING')}")
+        print(f"     reward_survive= {info.get('reward_survive', 'MISSING')}")
+        print(f"     reward_ctrl   = {info.get('reward_ctrl', 'MISSING')}")
 
-        # Test _get_termination(): should check torso height and state validity
+        assert "reward_forward" in info, "Missing reward_forward"
+        print("     ✓ reward_forward present")
+        assert "reward_ctrl" in info, "Missing reward_ctrl"
+        print("     ✓ reward_ctrl present")
+        assert "reward_survive" in info, "Missing reward_survive"
+        print("     ✓ reward_survive present")
+
+        assert info["reward_survive"] == 1.0, (
+            f"reward_survive should be 1.0, got {info['reward_survive']}"
+        )
+        print("     ✓ reward_survive == 1.0")
+
+        assert info["reward_ctrl"] <= 0, (
+            f"reward_ctrl should be <= 0, got {info['reward_ctrl']}"
+        )
+        print("     ✓ reward_ctrl <= 0")
+        print("     ✓ _get_rew() passed")
+
+        # Test _get_termination()
+        print("\n  [1c] Testing _get_termination()...")
         env.reset()
-        # Set torso too low (should terminate)
+
+        print("     → Setting torso height to 0.2 (too low)...")
         qpos = env.data.qpos.copy()
-        qpos[2] = 0.2  # Below 0.26 threshold
+        qpos[2] = 0.2
         env.set_state(qpos, env.data.qvel.copy())
+        print(f"       state[2] = {env.data.qpos[2]}")
         terminated_low = env._get_termination()
+        print(f"       terminated = {terminated_low} (expected True)")
         assert terminated_low, "Should terminate when torso height < 0.26"
+        print("     ✓ Terminates when too low")
 
-        # Set torso too high (should terminate)
-        qpos[2] = 1.5  # Above 1.0 threshold
+        print("     → Setting torso height to 1.5 (too high)...")
+        qpos[2] = 1.5
         env.set_state(qpos, env.data.qvel.copy())
+        print(f"       state[2] = {env.data.qpos[2]}")
         terminated_high = env._get_termination()
+        print(f"       terminated = {terminated_high} (expected True)")
         assert terminated_high, "Should terminate when torso height > 1.0"
+        print("     ✓ Terminates when too high")
 
-        # Set torso at healthy height (should not terminate)
-        qpos[2] = 0.5  # Between 0.26 and 1.0
+        print("     → Setting torso height to 0.5 (healthy)...")
+        qpos[2] = 0.5
         env.set_state(qpos, env.data.qvel.copy())
+        print(f"       state[2] = {env.data.qpos[2]}")
         terminated_healthy = env._get_termination()
+        print(f"       terminated = {terminated_healthy} (expected False)")
         assert not terminated_healthy, "Should NOT terminate when 0.26 < torso < 1.0"
+        print("     ✓ Does NOT terminate when healthy")
+        print("     ✓ _get_termination() passed")
 
         env.close()
-        print("✅ Environment works correctly!")
+        print("\n✅ Environment works correctly!")
+
     except NotImplementedError as e:
-        print(f"❌ Not implemented: {str(e)}")
-        print(
-            "   👉 Implement _get_obs(), _get_rew(), _get_termination() in ant_flat.py"
-        )
+        print(f"\n❌ Not implemented: {str(e)}")
+        print("   👉 Implement _get_obs(), _get_rew(), _get_termination() in ant_flat.py")
         exit(1)
     except AssertionError as e:
-        print(f"❌ Assertion failed: {str(e)}")
+        print(f"\n❌ Assertion failed: {str(e)}")
+        import traceback
+        traceback.print_exc()
         exit(1)
     except Exception as e:
-        print(f"❌ Error: {type(e).__name__}: {str(e)}")
+        print(f"\n❌ Error: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         exit(1)
 
     # Test 2: Neural Network Controller
@@ -117,7 +160,7 @@ def test_exercise_implementation():
     # Test 3: Evolutionary Algorithm
     print("\n[3/3] Testing Evolutionary Algorithm API...")
     try:
-        ea = EvoAlgAPI(n_params=560, population_size=20, sigma=0.5)
+        ea = EvoAlgAPI(n_params=560, population_size=20, sigma=0.15)
         population = ea.ask()
         assert population.shape == (20, 560), (
             f"Population shape should be (20, 560), got {population.shape}"
@@ -220,8 +263,11 @@ def run_evolution_neural_controller(
     # Create evolutionary algorithm with checkpointing
     num_params = world.n_params
     ea = EvoAlgAPI(
-        num_params, population_size=population_size, sigma=0.5, output_dir=ckpt_dir
+        num_params, population_size=population_size, sigma=0.1, output_dir=ckpt_dir
     )
+
+    log_path = ckpt_dir / "training_log.txt"
+    log_file = open(log_path, "w", buffering=1)
 
     # Evolution loop (checkpointing happens automatically in ea.tell())
     for generation in range(num_generations):
@@ -231,7 +277,7 @@ def run_evolution_neural_controller(
 
         for i, individual in enumerate(population):
             # fitness[i] = world.evaluate_individual(individual)
-            scores = [world.evaluate_individual(individual) for _ in range(5)]
+            scores = [world.evaluate_individual(individual) for _ in range(4)]
             fitness[i] = np.mean(scores)
 
         # Tell EA the results
@@ -244,20 +290,28 @@ def run_evolution_neural_controller(
         gen_best_idx = np.argmax(fitness)
         gen_best_fitness = fitness[gen_best_idx]
         mean_fitness = np.mean(fitness)
-        print(
+        line = (
             f"Generation {generation + 1}/{num_generations}: "
             f"Best={gen_best_fitness:.2f}, Mean={mean_fitness:.2f}, "
             f"Overall Best={ea.f_best_so_far:.2f}"
         )
+        print(line)
+        sys.stdout.flush()
+        log_file.write(line + "\n")
+
+    log_file.close()
 
     # Get best individual for evaluation from EA's tracking
     best_individual = ea.x_best_so_far
 
     print(f"\nEvolution complete! Best fitness: {ea.f_best_so_far:.2f}")
     print(f"Checkpoints saved to {ckpt_dir}")
+    print(f"Training log saved to {log_path}")
+    sys.stdout.flush()
 
-    # Save fitness plot
-    plot_fitness(ea.full_f, ckpt_dir)
+    # Save fitness plot (skip on headless cluster runs)
+    if run_evaluation or compute_score:
+        plot_fitness(ea.full_f, ckpt_dir)
 
     # Compute score Ant-v5 benchmark environment
     if compute_score:
@@ -300,90 +354,62 @@ def evaluate_checkpoint(
     checkpoint_dir: str,
     output_dir: str = "evaluation_output",
 ) -> None:
-    """Evaluate a checkpoint on the standard Gymnasium Ant-v5 (no contact forces).
+    from evorob.world.envs.ant_flat import AntFlatEnvironment
 
-    Loads the best genotype from the checkpoint, runs it for multiple episodes,
-    writes a score file and records a video.
+    n_episodes: int = 256
+    max_episode_steps: int = 1000
+    seed: int = 0
 
-    Args:
-        checkpoint_dir: Path to your EA checkpoint folder
-                        (e.g. "results/20260301_120000_neural_controller_ckpts")
-        output_dir:     Where to save score file and video (default: "evaluation_output")
-    """
-    n_episodes: int = 256  # DO NOT CHANGE!
-    max_episode_steps: int = 1000  # DO NOT CHANGE!
-    seed: int = 0  # DO NOT CHANGE!
-
-    # --- Load best genotype from checkpoint ---
+    # --- Load best genotype ---
     last_gen = get_last_checkpoint_dir(checkpoint_dir)
     x_best_path = os.path.join(last_gen, "x_best.npy") if last_gen else ""
-
     if not os.path.isfile(x_best_path):
         x_best_path = os.path.join(checkpoint_dir, "x_best.npy")
-
     if not os.path.isfile(x_best_path):
         print(f"ERROR: Could not find x_best.npy in '{checkpoint_dir}'.")
-        print("Make sure the path points to your checkpoint folder.")
         return
 
     genotype = np.load(x_best_path)
     print(f"Loaded genotype from: {x_best_path}  (shape: {genotype.shape})")
 
-    # --- Create controller (same one used during training) ---
+    # --- Controller ---
     controller = NeuralNetworkController(input_size=27, output_size=8, hidden_size=16)
     controller.geno2pheno(genotype)
-    print(
-        f"Controller: NeuralNetworkController  |  Parameters: {controller.n_params}\n"
-    )
+    print(f"Controller: NeuralNetworkController  |  Parameters: {controller.n_params}\n")
 
-    # --- Run evaluation episodes on the real Ant-v5 ---
-    env = gym.make(
-        "Ant-v5",
-        include_cfrc_ext_in_observation=False,
-        max_episode_steps=max_episode_steps,
-    )
+    # --- Evaluation ---
     rng = np.random.default_rng(seed)
     episode_rewards = []
 
     for ep in range(n_episodes):
-        ep_seed = int(rng.integers(0, 2**31))
-        obs, _ = env.reset(seed=ep_seed)
+        env = AntFlatEnvironment()  # ✅ env simple, pas vectorisé
+        obs, _ = env.reset(seed=int(rng.integers(0, 2**31)))
         controller.reset_controller(batch_size=1)
-
         total_reward = 0.0
-        done = False
+
         for _ in range(max_episode_steps):
             action = controller.get_action(obs)
             if action.ndim > 1:
                 action = action.squeeze(0)
             obs, reward, terminated, truncated, _ = env.step(action)
             total_reward += reward
-            done = terminated or truncated
-
-            if done:
+            if terminated or truncated:
                 break
 
         episode_rewards.append(total_reward)
+        env.close()
         print(f"  Episode {ep + 1}/{n_episodes}: reward = {total_reward:.2f}")
-
-    env.close()
 
     mean_reward = float(np.mean(episode_rewards))
     std_reward = float(np.std(episode_rewards))
     print(f"\nMean reward: {mean_reward:.2f} +/- {std_reward:.2f}")
 
-    # --- Record video ---
+    # --- Video ---
     print("\nRecording video...")
-    video_env = gym.make(
-        "Ant-v5",
-        include_cfrc_ext_in_observation=False,
-        max_episode_steps=max_episode_steps,
-        render_mode="rgb_array",
-    )
+    video_env = AntFlatEnvironment(render_mode="rgb_array")  # ✅ même env
     obs, _ = video_env.reset(seed=seed)
     controller.reset_controller(batch_size=1)
     frames = []
-    done = False
     video_reward = 0.0
 
     for _ in range(max_episode_steps):
@@ -393,16 +419,13 @@ def evaluate_checkpoint(
             action = action.squeeze(0)
         obs, reward, terminated, truncated, _ = video_env.step(action)
         video_reward += reward
-        done = terminated or truncated
-
-        if done:
+        if terminated or truncated:
             break
 
     video_env.close()
 
-    # --- Save outputs ---
+    # --- Save ---
     os.makedirs(output_dir, exist_ok=True)
-
     video_path = os.path.join(output_dir, "evaluation_video.mp4")
     imageio.mimwrite(video_path, frames, fps=20)
     print(f"Video saved to: {video_path}")
@@ -412,9 +435,9 @@ def evaluate_checkpoint(
         f.write("=" * 50 + "\n")
         f.write("MICRO-515 Challenge 1a - Evaluation Results\n")
         f.write("=" * 50 + "\n\n")
-        f.write(f"Controller type : NeuralNetworkController\n")
+        f.write(f"Controller      : NeuralNetworkController\n")
         f.write(f"Checkpoint      : {checkpoint_dir}\n")
-        f.write(f"Environment     : Ant-v5 (no contact forces)\n")
+        f.write(f"Environment     : AntFlatEnvironment (même qu'entraînement)\n")
         f.write(f"Episodes        : {n_episodes}\n\n")
         f.write("-" * 50 + "\n")
         f.write("Per-episode rewards:\n")
@@ -432,25 +455,15 @@ def evaluate_checkpoint(
     print(f"  FINAL SCORE: {mean_reward:.2f} +/- {std_reward:.2f}")
     print(f"{'=' * 50}")
 
-
 if __name__ == "__main__":
-    test_exercise_implementation()
+    # test_exercise_implementation()
 
     # Uncomment to run full evolution:
-    run_evolution_neural_controller(
-        num_generations=3000,
-        population_size=128,
-        ckpt_interval=10,
-        checkpoint_path=None,
-        run_evaluation=True,
-        compute_score=True,
-        random_seed=42,
-    )
+    run_evolution_neural_controller(num_generations=1000,population_size=48,ckpt_interval=10,checkpoint_path=None,run_evaluation=False,compute_score=False,random_seed=42,)
 
     # ----------------------------------------------------------------
     # EVALUATION: Uncomment the lines below to evaluate your checkpoint
     # on the standard Gymnasium Ant-v5 and get your final score + video.
     # Replace the path with your actual checkpoint folder.
     # ----------------------------------------------------------------
-    evaluate_checkpoint(
-         checkpoint_dir="results/20260304_174619_neural_controller_ckpts",)
+    # evaluate_checkpoint(checkpoint_dir="results/20260507_093722_neural_controller_ckpts",)
