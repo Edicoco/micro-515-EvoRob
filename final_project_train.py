@@ -35,7 +35,6 @@ import gymnasium as gym
 import numpy as np
 import scipy.ndimage
 from PIL import Image
-from concurrent.futures import ThreadPoolExecutor
 from gymnasium.vector import AsyncVectorEnv
 
 import evorob.world                         # registers EvalEnv-v0
@@ -283,11 +282,14 @@ class FinalWorld(World):
         Returns a 1-D array of three objective values: [flat, ice, hill].
         """
         self.update_robot_xml(genotype)
-        with ThreadPoolExecutor(max_workers=3) as ex:
-            f_flat = ex.submit(self._eval_flat, n_repeats, n_steps)
-            f_ice  = ex.submit(self._eval_ice,  n_repeats, n_steps)
-            f_hill = ex.submit(self._eval_hill, n_repeats, n_steps)
-            results = [f_flat.result(), f_ice.result(), f_hill.result()]
+        # Sequential evaluation: forking AsyncVectorEnv from inside ThreadPoolExecutor
+        # threads deadlocks on Linux (fork() copies only the calling thread but
+        # inherits mutexes held by other threads).
+        results = [
+            self._eval_flat(n_repeats, n_steps),
+            self._eval_ice(n_repeats, n_steps),
+            self._eval_hill(n_repeats, n_steps),
+        ]
         return np.array(results)
 
 
