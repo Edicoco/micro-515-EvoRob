@@ -43,8 +43,8 @@ ROOT_DIR = get_project_root()
 # ---------------------------------------------------------------------------
 
 NUM_GENERATIONS  = 400
-N_PER_GENOME     = 64      # 1 exact + 31 noisy  →  4 × 32 = 128 per terrain
-K_SPECIALISTS    = 2       # top-k genomes per terrain
+N_PER_GENOME     = 32      # 1 exact + 31 noisy  →  4 × 32 = 128 per terrain
+K_SPECIALISTS    = 4       # top-k genomes per terrain
 N_RANDOM         = 128
 N_REPEATS        = 2       # parallel episodes per terrain per individual
 N_STEPS          = 500
@@ -53,7 +53,7 @@ CROSSOVER_PROB   = 0.5
 BOUNDS           = (-10, 10)
 CKPT_INTERVAL    = 10
 CTRL_NOISE_STD   = 0.05
-BODY_NOISE_STD   = 0.05
+BODY_NOISE_STD   = 0.1
 RANDOM_SEED      = 42
 RESULTS_DIR      = join(ROOT_DIR, "results", "final_project_cluster")
 
@@ -86,7 +86,7 @@ print(f"\nGenotype: {world.n_params} params  (ctrl={world.n_weights}, body={worl
 
 n_active    = sum(t is not None for t in [flat4, ice4, hill4])
 pop_size    = N_RANDOM + n_active * K_SPECIALISTS * N_PER_GENOME
-n_parents   = pop_size // 2
+n_parents   = pop_size // 3
 
 print(f"Population: {N_RANDOM} random + {n_active} terrains × {K_SPECIALISTS} × {N_PER_GENOME} = {pop_size}")
 
