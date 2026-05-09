@@ -106,17 +106,22 @@ class AntFlatEnvironment(MujocoEnv):
         return np.concatenate((position, velocity))
 
     def _get_rew(self, x_velocity: float, action):
-        forward_reward_weight = 2
+        forward_reward_weight = 3
         healthy_reward_weight = 1.0
-        ctrl_cost_weight = 0.2
+        ctrl_cost_weight = 0.1
         y_position = self.data.qpos[1]
-        lateral_penalty_weight = 0.1  # à tuner
+        lateral_penalty_weight = 0.07  # à tuner
 
         lateral_penalty = lateral_penalty_weight * (y_position ** 2)
 
         forward_reward = x_velocity * forward_reward_weight
         healthy_reward = healthy_reward_weight
         ctrl_cost = ctrl_cost_weight * np.sum(np.square(action))
+
+        # Add penalties for not going forward
+        if x_velocity < 0.1:
+            immobility_penalty = (0.1 - x_velocity) * 2.0  # pénalise aussi le recul
+            healthy_reward -= immobility_penalty
 
         if self.torso_near_tipping(): 
             risk_penalty = -1  # pénalité pour être proche du basculement
