@@ -42,13 +42,13 @@ ROOT_DIR = get_project_root()
 # Training hyper-parameters
 # ---------------------------------------------------------------------------
 
-NUM_GENERATIONS  = 1000
+NUM_GENERATIONS  = 400
 N_PER_GENOME     = 64      # 1 exact + 31 noisy  →  4 × 32 = 128 per terrain
 K_SPECIALISTS    = 2       # top-k genomes per terrain
 N_RANDOM         = 128
 N_REPEATS        = 2       # parallel episodes per terrain per individual
 N_STEPS          = 500
-MUTATION_PROB    = 0.3
+MUTATION_PROB    = 0.2
 CROSSOVER_PROB   = 0.5
 BOUNDS           = (-10, 10)
 CKPT_INTERVAL    = 10
