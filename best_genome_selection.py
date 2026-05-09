@@ -125,7 +125,7 @@ def build_diverse_initial_population(
 
     Returns:
         np.ndarray of shape  (n_random + n_active_terrains × k × n_per_genome, n_params).
-        With defaults (k=4, n_per_genome=32, 3 terrains):  128 + 3×128 = 512.
+        With defaults (k=2, n_per_genome=64, 3 terrains):  128 + 3×128 = 512.
     """
     rng = np.random.default_rng(random_seed)
     parts = []
@@ -172,7 +172,7 @@ def build_diverse_initial_population(
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    K = 4
+    K = 2
 
     print(f"Loading top-{K} specialists per terrain from last checkpoint...")
 
@@ -197,15 +197,15 @@ if __name__ == "__main__":
         flat_top_k=flat4,
         ice_top_k=ice4,
         hill_top_k=hill4,
-        n_per_genome=32,       # 1 exact + 31 noisy per genome
+        n_per_genome=64,       # 1 exact + 63 noisy per genome
         ctrl_noise_std=0.1,
         body_noise_std=0.1,
         random_seed=42,
     )
 
     print(f"\nTotal population shape : {pop.shape}")
-    # Expected: 128 random + 3 × (4 × 32) = 128 + 384 = 512
-    print(f"Expected               : {128 + 3 * K * 32}")
-    assert pop.shape == (128 + 3 * K * 32, n_params), "Population size mismatch!"
+    # Expected: 128 random + 3 × (2 × 64) = 128 + 384 = 512
+    print(f"Expected               : {128 + 3 * K * 64}")
+    assert pop.shape == (128 + 3 * K * 64, n_params), "Population size mismatch!"
     print("OK — population looks correct.")
 

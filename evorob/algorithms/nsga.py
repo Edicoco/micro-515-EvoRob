@@ -47,9 +47,9 @@ class NSGAII(EA):
             n_opt_params: int,
             n_parents: int = 16,
             num_generations: int = 100,
-            bounds: Tuple[float, float] = (-4, 4),
-            mutation_prob: float = 0.3,
-            crossover_prob: float = 0.1,
+            bounds: Tuple[float, float] = (-10, 10),
+            mutation_prob: float = 0.2,
+            crossover_prob: float = 0.5,
             output_dir: str = "./results/NSGA",
     ) -> None:
         """

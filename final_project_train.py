@@ -23,6 +23,7 @@ x_best.npy always stores only the 560 controller params.
 Body params of the best individual are stored in x_best_body.npy.
 """
 
+import copy
 import os
 import shutil
 import time
@@ -34,6 +35,7 @@ import gymnasium as gym
 import numpy as np
 import scipy.ndimage
 from PIL import Image
+from concurrent.futures import ThreadPoolExecutor
 from gymnasium.vector import AsyncVectorEnv
 
 import evorob.world                         # registers EvalEnv-v0
@@ -96,6 +98,13 @@ class FinalWorld(World):
         self.sensor_fn = None
 
         self._create_terrain_file("terrain.png")
+
+        # Cache parsed XML templates — re-used every individual via deepcopy
+        self._template_roots = {
+            "flat": xml.parse(join(_ASSETS, "flat_world.xml")).getroot(),
+            "ice":  xml.parse(join(_ASSETS, "ice_world.xml")).getroot(),
+            "hill": xml.parse(join(_ASSETS, "hill_world.xml")).getroot(),
+        }
 
     # ------------------------------------------------------------------
     # Genotype → phenotype
@@ -184,13 +193,12 @@ class FinalWorld(World):
         robot.xml = robot.define_robot()
         robot.write_xml(self.temp_dir.name)
 
-        for template, world_file in [
-            (join(_ASSETS, "flat_world.xml"), self.flat_world_file),
-            (join(_ASSETS, "ice_world.xml"),  self.ice_world_file),
-            (join(_ASSETS, "hill_world.xml"), self.hill_world_file),
+        for name, world_file in [
+            ("flat", self.flat_world_file),
+            ("ice",  self.ice_world_file),
+            ("hill", self.hill_world_file),
         ]:
-            tree = xml.parse(template)
-            root = tree.getroot()
+            root = copy.deepcopy(self._template_roots[name])
             root.append(xml.Element("include", attrib={"file": "Robot.xml"}))
             with open(world_file, "w") as f:
                 f.write(xml.tostring(root, encoding="unicode"))
@@ -275,12 +283,11 @@ class FinalWorld(World):
         Returns a 1-D array of three objective values: [flat, ice, hill].
         """
         self.update_robot_xml(genotype)
-        results = []
-        for name, fn in [("flat", self._eval_flat), ("ice", self._eval_ice), ("hill", self._eval_hill)]:
-            t0 = time.time()
-            score = fn(n_repeats, n_steps)
-            results.append(score)
-            print(f"    {name:4s}: {score:8.2f}  ({time.time()-t0:.1f}s)", flush=True)
+        with ThreadPoolExecutor(max_workers=3) as ex:
+            f_flat = ex.submit(self._eval_flat, n_repeats, n_steps)
+            f_ice  = ex.submit(self._eval_ice,  n_repeats, n_steps)
+            f_hill = ex.submit(self._eval_hill, n_repeats, n_steps)
+            results = [f_flat.result(), f_ice.result(), f_hill.result()]
         return np.array(results)
 
 
@@ -567,10 +574,10 @@ def remap_challenge1_weights(weights: np.ndarray) -> np.ndarray:
 def run_multi_task_evolution(
     num_generations: int = 1000,
     population_size: int = 512,
-    n_parents:       int = 128,
+    n_parents:       int = 256,
     n_repeats:       int = 3,
     n_steps:         int = 500,
-    mutation_prob:   float = 0.3,
+    mutation_prob:   float = 0.2,
     crossover_prob:  float = 0.5,
     bounds:          tuple = (-10, 10),
     ckpt_interval:   int = 10,
@@ -758,9 +765,9 @@ if __name__ == "__main__":
     run_multi_task_evolution(
         num_generations=300,
         population_size=pop_size,
-        n_parents=pop_size // 4,
+        n_parents=pop_size // 2,
         n_repeats=2,
-        n_steps=500,
+        n_steps=600,
         ckpt_interval=10,
         bounds=(-10, 10),
         results_dir=join(ROOT_DIR, "results", "final_project"),
@@ -769,7 +776,7 @@ if __name__ == "__main__":
         ice_top_k=ice_top_k,
         hill_top_k=hill_top_k,
         n_per_genome=N_PER_GENOME,
-        ctrl_noise_std=0.1,
-        body_noise_std=0.1,
+        ctrl_noise_std=0.05,
+        body_noise_std=0.05,
     )
 
