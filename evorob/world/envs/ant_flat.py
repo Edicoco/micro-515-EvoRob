@@ -106,7 +106,7 @@ class AntFlatEnvironment(MujocoEnv):
         return np.concatenate((position, velocity))
 
     def _get_rew(self, x_velocity: float, action):
-        forward_reward_weight = 1.7
+        forward_reward_weight = 2
         healthy_reward_weight = 1.0
         ctrl_cost_weight = 0.2
         y_position = self.data.qpos[1]
