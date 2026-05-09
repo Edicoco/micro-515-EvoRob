@@ -21,6 +21,7 @@ import shutil
 import time
 import xml.etree.ElementTree as xml
 import numpy as np
+from concurrent.futures import ProcessPoolExecutor
 
 from os.path import join
 
@@ -47,6 +48,7 @@ N_PER_GENOME     = 32      # 1 exact + 31 noisy  →  4 × 32 = 128 per terrain
 K_SPECIALISTS    = 4       # top-k genomes per terrain
 N_RANDOM         = 128
 N_REPEATS        = 2       # parallel episodes per terrain per individual
+N_WORKERS        = max(1, (os.cpu_count() or 1) // (N_REPEATS + 1))  # cores / (envs+1 per ind)
 N_STEPS          = 500
 MUTATION_PROB    = 0.2
 CROSSOVER_PROB   = 0.5
@@ -56,6 +58,23 @@ CTRL_NOISE_STD   = 0.05
 BODY_NOISE_STD   = 0.1
 RANDOM_SEED      = 42
 RESULTS_DIR      = join(ROOT_DIR, "results", "final_project_cluster")
+
+# ---------------------------------------------------------------------------
+# Per-worker state (one FinalWorld per process, set by pool initializer)
+# ---------------------------------------------------------------------------
+
+_world_worker = None
+
+def _init_world_worker():
+    global _world_worker
+    _world_worker = FinalWorld()
+
+def _eval_individual_worker(args):
+    genotype, n_repeats, n_steps = args
+    fitnesses = _world_worker.evaluate_individual(genotype, n_repeats=n_repeats, n_steps=n_steps)
+    with open(join(_world_worker.temp_dir.name, "Robot.xml")) as fh:
+        robot_xml = fh.read()
+    return fitnesses.tolist(), robot_xml
 
 # ---------------------------------------------------------------------------
 # Load top-k specialists (graceful fallback if checkpoints not present)
@@ -132,53 +151,52 @@ print(f"Checkpoints: {RESULTS_DIR}\n")
 
 t_run_start = time.time()
 
-for gen in range(NUM_GENERATIONS):
-    t_gen_start = time.time()
-    pop   = ea.ask()
-    n_pop = len(pop)
-    fitnesses = np.empty((n_pop, n_obj))
+print(f"Parallel workers: {N_WORKERS}  (cores={os.cpu_count()}, N_REPEATS={N_REPEATS})\n")
 
-    print(f"\n[Gen {gen+1}/{NUM_GENERATIONS}]  evaluating {n_pop} individuals...", flush=True)
-    log_every = max(1, n_pop // 10)
+with ProcessPoolExecutor(max_workers=N_WORKERS, initializer=_init_world_worker) as pool:
+    for gen in range(NUM_GENERATIONS):
+        t_gen_start = time.time()
+        pop   = ea.ask()
+        n_pop = len(pop)
 
-    for idx, genotype in enumerate(pop):
-        t_ind = time.time()
-        fitnesses[idx] = world.evaluate_individual(genotype, n_repeats=N_REPEATS, n_steps=N_STEPS)
-        scalar = float(fitnesses[idx].sum())
+        print(f"\n[Gen {gen+1}/{NUM_GENERATIONS}]  evaluating {n_pop} individuals ({N_WORKERS} parallel)...", flush=True)
 
-        if scalar > _best_scalar:
-            _best_scalar = scalar
-            shutil.copy2(join(world.temp_dir.name, "Robot.xml"), _best_xml_stage)
+        args    = [(g, N_REPEATS, N_STEPS) for g in pop]
+        results = list(pool.map(_eval_individual_worker, args, chunksize=1))
 
-        if (idx + 1) % log_every == 0 or idx == n_pop - 1:
-            f_str = "  ".join(f"{v:7.2f}" for v in fitnesses[idx])
-            print(
-                f"  [{idx+1:>{len(str(n_pop))}}/{n_pop}]"
-                f"  fit=[{f_str}]  sum={scalar:8.2f}"
-                f"  best_so_far={_best_scalar:8.2f}"
-                f"  ({time.time()-t_ind:.1f}s/ind)",
-                flush=True,
-            )
+        fitnesses    = np.array([r[0] for r in results])
+        xml_contents = [r[1] for r in results]
 
-    gen_elapsed = time.time() - t_gen_start
-    gens_done   = gen + 1
-    avg_gen     = (time.time() - t_run_start) / gens_done
-    eta_str     = time.strftime("%H:%M:%S", time.gmtime(avg_gen * (NUM_GENERATIONS - gens_done)))
-    print(
-        f"[Gen {gen+1}/{NUM_GENERATIONS}]  done in {gen_elapsed:.1f}s"
-        f"  |  best_sum={_best_scalar:.2f}"
-        f"  |  ETA {eta_str}",
-        flush=True,
-    )
+        scalars      = fitnesses.sum(axis=1)
+        best_idx     = int(scalars.argmax())
+        best_gen     = float(scalars[best_idx])
 
-    save_ckpt = (gen % CKPT_INTERVAL == 0)
-    ea.tell(pop, fitnesses, save_checkpoint=save_ckpt)
+        if best_gen > _best_scalar:
+            _best_scalar = best_gen
+            with open(_best_xml_stage, "w") as fh:
+                fh.write(xml_contents[best_idx])
 
-    if save_ckpt:
-        ckpt_dir = join(RESULTS_DIR, str(gen))
-        np.save(join(ckpt_dir, "x_best.npy"),      ea.x_best_so_far[:world.n_weights])
-        np.save(join(ckpt_dir, "x_best_body.npy"), ea.x_best_so_far[world.n_weights:])
-        shutil.copy2(_best_xml_stage, join(ckpt_dir, "Robot.xml"))
+        gen_elapsed = time.time() - t_gen_start
+        gens_done   = gen + 1
+        avg_gen     = (time.time() - t_run_start) / gens_done
+        eta_str     = time.strftime("%H:%M:%S", time.gmtime(avg_gen * (NUM_GENERATIONS - gens_done)))
+        f_str = "  ".join(f"{v:7.2f}" for v in fitnesses[best_idx])
+        print(
+            f"[Gen {gen+1}/{NUM_GENERATIONS}]  done in {gen_elapsed:.1f}s"
+            f"  |  best_gen=[{f_str}]  sum={best_gen:.2f}"
+            f"  |  best_so_far={_best_scalar:.2f}"
+            f"  |  ETA {eta_str}",
+            flush=True,
+        )
+
+        save_ckpt = (gen % CKPT_INTERVAL == 0)
+        ea.tell(pop, fitnesses, save_checkpoint=save_ckpt)
+
+        if save_ckpt:
+            ckpt_dir = join(RESULTS_DIR, str(gen))
+            np.save(join(ckpt_dir, "x_best.npy"),      ea.x_best_so_far[:world.n_weights])
+            np.save(join(ckpt_dir, "x_best_body.npy"), ea.x_best_so_far[world.n_weights:])
+            shutil.copy2(_best_xml_stage, join(ckpt_dir, "Robot.xml"))
 
 # ---------------------------------------------------------------------------
 # Training summary
