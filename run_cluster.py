@@ -17,6 +17,7 @@ Usage (cluster):
 """
 
 import os
+import platform
 import shutil
 import time
 import xml.etree.ElementTree as xml
@@ -48,7 +49,9 @@ N_PER_GENOME     = 32      # 1 exact + 31 noisy  →  4 × 32 = 128 per terrain
 K_SPECIALISTS    = 4       # top-k genomes per terrain
 N_RANDOM         = 128
 N_REPEATS        = 2       # parallel episodes per terrain per individual
-N_WORKERS        = max(1, (os.cpu_count() or 1) // (N_REPEATS + 1))  # cores / (envs+1 per ind)
+# macOS uses 'spawn' which breaks nested multiprocessing (AsyncVectorEnv inside pool)
+# Linux (cluster) uses 'fork' which is safe → enable parallel eval there only
+N_WORKERS        = 0 if platform.system() == 'Darwin' else max(1, (os.cpu_count() or 1) // (N_REPEATS + 1))
 N_STEPS          = 500
 MUTATION_PROB    = 0.2
 CROSSOVER_PROB   = 0.5
@@ -146,23 +149,41 @@ if __name__ == '__main__':
     _best_scalar    = -np.inf
     n_obj           = 3
 
+    mode_str = f"{N_WORKERS} parallel workers" if N_WORKERS > 0 else "sequential (macOS)"
     print(f"\nRunning {NUM_GENERATIONS} generations  pop={pop_size}  n_repeats={N_REPEATS}")
     print(f"Objectives : [flat, ice, hill]")
     print(f"Checkpoints: {RESULTS_DIR}")
-    print(f"Parallel workers: {N_WORKERS}  (cores={os.cpu_count()}, N_REPEATS={N_REPEATS})\n")
+    print(f"Eval mode  : {mode_str}  (cores={os.cpu_count()})\n")
 
     t_run_start = time.time()
 
-    with ProcessPoolExecutor(max_workers=N_WORKERS, initializer=_init_world_worker) as pool:
+    def _run_gen(pool):
+        pop   = ea.ask()
+        n_pop = len(pop)
+        print(f"\n[Gen {gen+1}/{NUM_GENERATIONS}]  evaluating {n_pop} individuals  [{mode_str}]...", flush=True)
+        if pool is not None:
+            args = [(g, N_REPEATS, N_STEPS) for g in pop]
+            return pop, list(pool.map(_eval_individual_worker, args, chunksize=1))
+        # sequential path (macOS): evaluate in main process with progress logging
+        results   = []
+        log_every = max(1, n_pop // 10)
+        for idx, g in enumerate(pop):
+            t0 = time.time()
+            f  = world.evaluate_individual(g, n_repeats=N_REPEATS, n_steps=N_STEPS)
+            with open(join(world.temp_dir.name, "Robot.xml")) as fh:
+                xml_str = fh.read()
+            results.append((f.tolist(), xml_str))
+            if (idx + 1) % log_every == 0 or idx == n_pop - 1:
+                f_str = "  ".join(f"{v:7.2f}" for v in f)
+                print(f"  [{idx+1:>{len(str(n_pop))}}/{n_pop}]  fit=[{f_str}]  ({time.time()-t0:.1f}s/ind)", flush=True)
+        return pop, results
+
+    pool_ctx = ProcessPoolExecutor(max_workers=N_WORKERS, initializer=_init_world_worker) if N_WORKERS > 0 else None
+
+    try:
         for gen in range(NUM_GENERATIONS):
             t_gen_start = time.time()
-            pop   = ea.ask()
-            n_pop = len(pop)
-
-            print(f"\n[Gen {gen+1}/{NUM_GENERATIONS}]  evaluating {n_pop} individuals ({N_WORKERS} parallel)...", flush=True)
-
-            args    = [(g, N_REPEATS, N_STEPS) for g in pop]
-            results = list(pool.map(_eval_individual_worker, args, chunksize=1))
+            pop, results = _run_gen(pool_ctx)
 
             fitnesses    = np.array([r[0] for r in results])
             xml_contents = [r[1] for r in results]
@@ -197,6 +218,9 @@ if __name__ == '__main__':
                 np.save(join(ckpt_dir, "x_best.npy"),      ea.x_best_so_far[:world.n_weights])
                 np.save(join(ckpt_dir, "x_best_body.npy"), ea.x_best_so_far[world.n_weights:])
                 shutil.copy2(_best_xml_stage, join(ckpt_dir, "Robot.xml"))
+    finally:
+        if pool_ctx is not None:
+            pool_ctx.shutdown(wait=False)
 
     # -------------------------------------------------------------------------
     # Training summary
