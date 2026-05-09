@@ -60,7 +60,7 @@ RANDOM_SEED      = 42
 RESULTS_DIR      = join(ROOT_DIR, "results", "final_project_cluster")
 
 # ---------------------------------------------------------------------------
-# Per-worker state (one FinalWorld per process, set by pool initializer)
+# Per-worker state — must be at module level for pickle (spawn start method)
 # ---------------------------------------------------------------------------
 
 _world_worker = None
@@ -76,10 +76,6 @@ def _eval_individual_worker(args):
         robot_xml = fh.read()
     return fitnesses.tolist(), robot_xml
 
-# ---------------------------------------------------------------------------
-# Load top-k specialists (graceful fallback if checkpoints not present)
-# ---------------------------------------------------------------------------
-
 def _try_load(loader, name):
     try:
         genomes, scores = loader(K_SPECIALISTS)
@@ -89,133 +85,137 @@ def _try_load(loader, name):
         print(f"  {name}: skipped ({exc})")
         return None
 
-
-print("Loading specialists...")
-flat4 = _try_load(load_top_k_flat, "flat")
-ice4  = _try_load(load_top_k_ice,  "ice")
-hill4 = _try_load(load_top_k_hill, "hill")
-
 # ---------------------------------------------------------------------------
-# World + EA setup
+# Entry point — guard required so spawn workers don't re-run this code
 # ---------------------------------------------------------------------------
 
-np.random.seed(RANDOM_SEED)
-world = FinalWorld()
-print(f"\nGenotype: {world.n_params} params  (ctrl={world.n_weights}, body={world.n_body_params})")
+if __name__ == '__main__':
 
-n_active    = sum(t is not None for t in [flat4, ice4, hill4])
-pop_size    = N_RANDOM + n_active * K_SPECIALISTS * N_PER_GENOME
-n_parents   = pop_size // 3
+    print("Loading specialists...")
+    flat4 = _try_load(load_top_k_flat, "flat")
+    ice4  = _try_load(load_top_k_ice,  "ice")
+    hill4 = _try_load(load_top_k_hill, "hill")
 
-print(f"Population: {N_RANDOM} random + {n_active} terrains × {K_SPECIALISTS} × {N_PER_GENOME} = {pop_size}")
+    # -------------------------------------------------------------------------
+    # World + EA setup
+    # -------------------------------------------------------------------------
 
-ea = NSGAII(
-    population_size=pop_size,
-    n_opt_params=world.n_params,
-    n_parents=n_parents,
-    num_generations=NUM_GENERATIONS,
-    bounds=BOUNDS,
-    mutation_prob=MUTATION_PROB,
-    crossover_prob=CROSSOVER_PROB,
-    output_dir=RESULTS_DIR,
-)
+    np.random.seed(RANDOM_SEED)
+    world = FinalWorld()
+    print(f"\nGenotype: {world.n_params} params  (ctrl={world.n_weights}, body={world.n_body_params})")
 
-init_pop = build_diverse_initial_population(
-    n_params=world.n_params,
-    n_weights=world.n_weights,
-    n_body_params=world.n_body_params,
-    bounds=BOUNDS,
-    n_random=N_RANDOM,
-    flat_top_k=flat4,
-    ice_top_k=ice4,
-    hill_top_k=hill4,
-    n_per_genome=N_PER_GENOME,
-    ctrl_noise_std=CTRL_NOISE_STD,
-    body_noise_std=BODY_NOISE_STD,
-    random_seed=RANDOM_SEED,
-)
-ea.initialise_x0 = lambda: init_pop
+    n_active    = sum(t is not None for t in [flat4, ice4, hill4])
+    pop_size    = N_RANDOM + n_active * K_SPECIALISTS * N_PER_GENOME
+    n_parents   = pop_size // 3
 
-# ---------------------------------------------------------------------------
-# Evolution loop
-# ---------------------------------------------------------------------------
+    print(f"Population: {N_RANDOM} random + {n_active} terrains × {K_SPECIALISTS} × {N_PER_GENOME} = {pop_size}")
 
-os.makedirs(RESULTS_DIR, exist_ok=True)
-_best_xml_stage = join(RESULTS_DIR, "_best_robot.xml")
-_best_scalar    = -np.inf
-n_obj           = 3
+    ea = NSGAII(
+        population_size=pop_size,
+        n_opt_params=world.n_params,
+        n_parents=n_parents,
+        num_generations=NUM_GENERATIONS,
+        bounds=BOUNDS,
+        mutation_prob=MUTATION_PROB,
+        crossover_prob=CROSSOVER_PROB,
+        output_dir=RESULTS_DIR,
+    )
 
-print(f"\nRunning {NUM_GENERATIONS} generations  pop={pop_size}  n_repeats={N_REPEATS}")
-print(f"Objectives : [flat, ice, hill]")
-print(f"Checkpoints: {RESULTS_DIR}\n")
+    init_pop = build_diverse_initial_population(
+        n_params=world.n_params,
+        n_weights=world.n_weights,
+        n_body_params=world.n_body_params,
+        bounds=BOUNDS,
+        n_random=N_RANDOM,
+        flat_top_k=flat4,
+        ice_top_k=ice4,
+        hill_top_k=hill4,
+        n_per_genome=N_PER_GENOME,
+        ctrl_noise_std=CTRL_NOISE_STD,
+        body_noise_std=BODY_NOISE_STD,
+        random_seed=RANDOM_SEED,
+    )
+    ea.initialise_x0 = lambda: init_pop
 
-t_run_start = time.time()
+    # -------------------------------------------------------------------------
+    # Evolution loop
+    # -------------------------------------------------------------------------
 
-print(f"Parallel workers: {N_WORKERS}  (cores={os.cpu_count()}, N_REPEATS={N_REPEATS})\n")
+    os.makedirs(RESULTS_DIR, exist_ok=True)
+    _best_xml_stage = join(RESULTS_DIR, "_best_robot.xml")
+    _best_scalar    = -np.inf
+    n_obj           = 3
 
-with ProcessPoolExecutor(max_workers=N_WORKERS, initializer=_init_world_worker) as pool:
-    for gen in range(NUM_GENERATIONS):
-        t_gen_start = time.time()
-        pop   = ea.ask()
-        n_pop = len(pop)
+    print(f"\nRunning {NUM_GENERATIONS} generations  pop={pop_size}  n_repeats={N_REPEATS}")
+    print(f"Objectives : [flat, ice, hill]")
+    print(f"Checkpoints: {RESULTS_DIR}")
+    print(f"Parallel workers: {N_WORKERS}  (cores={os.cpu_count()}, N_REPEATS={N_REPEATS})\n")
 
-        print(f"\n[Gen {gen+1}/{NUM_GENERATIONS}]  evaluating {n_pop} individuals ({N_WORKERS} parallel)...", flush=True)
+    t_run_start = time.time()
 
-        args    = [(g, N_REPEATS, N_STEPS) for g in pop]
-        results = list(pool.map(_eval_individual_worker, args, chunksize=1))
+    with ProcessPoolExecutor(max_workers=N_WORKERS, initializer=_init_world_worker) as pool:
+        for gen in range(NUM_GENERATIONS):
+            t_gen_start = time.time()
+            pop   = ea.ask()
+            n_pop = len(pop)
 
-        fitnesses    = np.array([r[0] for r in results])
-        xml_contents = [r[1] for r in results]
+            print(f"\n[Gen {gen+1}/{NUM_GENERATIONS}]  evaluating {n_pop} individuals ({N_WORKERS} parallel)...", flush=True)
 
-        scalars      = fitnesses.sum(axis=1)
-        best_idx     = int(scalars.argmax())
-        best_gen     = float(scalars[best_idx])
+            args    = [(g, N_REPEATS, N_STEPS) for g in pop]
+            results = list(pool.map(_eval_individual_worker, args, chunksize=1))
 
-        if best_gen > _best_scalar:
-            _best_scalar = best_gen
-            with open(_best_xml_stage, "w") as fh:
-                fh.write(xml_contents[best_idx])
+            fitnesses    = np.array([r[0] for r in results])
+            xml_contents = [r[1] for r in results]
 
-        gen_elapsed = time.time() - t_gen_start
-        gens_done   = gen + 1
-        avg_gen     = (time.time() - t_run_start) / gens_done
-        eta_str     = time.strftime("%H:%M:%S", time.gmtime(avg_gen * (NUM_GENERATIONS - gens_done)))
-        f_str = "  ".join(f"{v:7.2f}" for v in fitnesses[best_idx])
-        print(
-            f"[Gen {gen+1}/{NUM_GENERATIONS}]  done in {gen_elapsed:.1f}s"
-            f"  |  best_gen=[{f_str}]  sum={best_gen:.2f}"
-            f"  |  best_so_far={_best_scalar:.2f}"
-            f"  |  ETA {eta_str}",
-            flush=True,
-        )
+            scalars      = fitnesses.sum(axis=1)
+            best_idx     = int(scalars.argmax())
+            best_gen     = float(scalars[best_idx])
 
-        save_ckpt = (gen % CKPT_INTERVAL == 0)
-        ea.tell(pop, fitnesses, save_checkpoint=save_ckpt)
+            if best_gen > _best_scalar:
+                _best_scalar = best_gen
+                with open(_best_xml_stage, "w") as fh:
+                    fh.write(xml_contents[best_idx])
 
-        if save_ckpt:
-            ckpt_dir = join(RESULTS_DIR, str(gen))
-            np.save(join(ckpt_dir, "x_best.npy"),      ea.x_best_so_far[:world.n_weights])
-            np.save(join(ckpt_dir, "x_best_body.npy"), ea.x_best_so_far[world.n_weights:])
-            shutil.copy2(_best_xml_stage, join(ckpt_dir, "Robot.xml"))
+            gen_elapsed = time.time() - t_gen_start
+            gens_done   = gen + 1
+            avg_gen     = (time.time() - t_run_start) / gens_done
+            eta_str     = time.strftime("%H:%M:%S", time.gmtime(avg_gen * (NUM_GENERATIONS - gens_done)))
+            f_str = "  ".join(f"{v:7.2f}" for v in fitnesses[best_idx])
+            print(
+                f"[Gen {gen+1}/{NUM_GENERATIONS}]  done in {gen_elapsed:.1f}s"
+                f"  |  best_gen=[{f_str}]  sum={best_gen:.2f}"
+                f"  |  best_so_far={_best_scalar:.2f}"
+                f"  |  ETA {eta_str}",
+                flush=True,
+            )
 
-# ---------------------------------------------------------------------------
-# Training summary
-# ---------------------------------------------------------------------------
+            save_ckpt = (gen % CKPT_INTERVAL == 0)
+            ea.tell(pop, fitnesses, save_checkpoint=save_ckpt)
 
-best_f     = ea.f_best_so_far
-score_path = join(RESULTS_DIR, "training_score.txt")
-with open(score_path, "w") as fh:
-    fh.write("=" * 60 + "\n")
-    fh.write("MICRO-515 Final Project — Cluster Training Summary\n")
-    fh.write("=" * 60 + "\n\n")
-    fh.write(f"Generations     : {NUM_GENERATIONS}\n")
-    fh.write(f"Population size : {pop_size}\n")
-    fh.write(f"n_repeats       : {N_REPEATS}\n")
-    fh.write(f"K specialists   : {K_SPECIALISTS} per terrain\n")
-    fh.write(f"n_per_genome    : {N_PER_GENOME}\n\n")
-    fh.write("Best individual (highest sum of objectives):\n")
-    for label, val in zip(["flat", "ice", "hill"], best_f):
-        fh.write(f"  {label:<6}: {float(val):10.2f}\n")
-    fh.write(f"  {'sum':<6}: {float(best_f.sum()):10.2f}\n")
+            if save_ckpt:
+                ckpt_dir = join(RESULTS_DIR, str(gen))
+                np.save(join(ckpt_dir, "x_best.npy"),      ea.x_best_so_far[:world.n_weights])
+                np.save(join(ckpt_dir, "x_best_body.npy"), ea.x_best_so_far[world.n_weights:])
+                shutil.copy2(_best_xml_stage, join(ckpt_dir, "Robot.xml"))
 
-print(f"\nTraining summary saved to: {score_path}")
+    # -------------------------------------------------------------------------
+    # Training summary
+    # -------------------------------------------------------------------------
+
+    best_f     = ea.f_best_so_far
+    score_path = join(RESULTS_DIR, "training_score.txt")
+    with open(score_path, "w") as fh:
+        fh.write("=" * 60 + "\n")
+        fh.write("MICRO-515 Final Project — Cluster Training Summary\n")
+        fh.write("=" * 60 + "\n\n")
+        fh.write(f"Generations     : {NUM_GENERATIONS}\n")
+        fh.write(f"Population size : {pop_size}\n")
+        fh.write(f"n_repeats       : {N_REPEATS}\n")
+        fh.write(f"K specialists   : {K_SPECIALISTS} per terrain\n")
+        fh.write(f"n_per_genome    : {N_PER_GENOME}\n\n")
+        fh.write("Best individual (highest sum of objectives):\n")
+        for label, val in zip(["flat", "ice", "hill"], best_f):
+            fh.write(f"  {label:<6}: {float(val):10.2f}\n")
+        fh.write(f"  {'sum':<6}: {float(best_f.sum()):10.2f}\n")
+
+    print(f"\nTraining summary saved to: {score_path}")
