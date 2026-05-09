@@ -106,15 +106,23 @@ class AntFlatEnvironment(MujocoEnv):
         return np.concatenate((position, velocity))
 
     def _get_rew(self, x_velocity: float, action):
-        forward_reward_weight = 1.0
+        forward_reward_weight = 1.5
         healthy_reward_weight = 1.0
-        ctrl_cost_weight = 0.5
+        ctrl_cost_weight = 0.2
+        y_position = self.data.qpos[1]
+        lateral_penalty_weight = 0.4  # à tuner
+
+        lateral_penalty = lateral_penalty_weight * (y_position ** 2)
 
         forward_reward = x_velocity * forward_reward_weight
         healthy_reward = healthy_reward_weight
         ctrl_cost = ctrl_cost_weight * np.sum(np.square(action))
 
-        reward = forward_reward + healthy_reward - ctrl_cost
+        if self.torso_near_tipping():
+            risk_penalty = -1  # pénalité pour être proche du basculement
+            healthy_reward += risk_penalty
+
+        reward = forward_reward + healthy_reward - ctrl_cost - lateral_penalty
 
         reward_info = {
             "reward_forward": forward_reward,
@@ -123,10 +131,23 @@ class AntFlatEnvironment(MujocoEnv):
         }
 
         return reward, reward_info
+    
+    def torso_upside_down(self,):
+        R = self.data.body(self._main_body).xmat.reshape(3, 3)
+        torso_z_world = R[:, 2]
+        # if dot(torso_z, world_z) < 0 → pointing downward → upside down
+        return torso_z_world[2] < 0.0
+
+    def torso_near_tipping(self, threshold: float = 0.5) -> bool:
+        # torso_z_world[2] = cos(tilt angle); threshold=0.5 → tilted >60° from upright but not yet flipped
+        R = self.data.body(self._main_body).xmat.reshape(3, 3)
+        z = R[2, 2]
+        return 0.0 <= z < threshold
 
     def _get_termination(self):
         state = self.state_vector()
         min_z_torso, max_z_torso = (0.26, 1.0)
-        is_healthy = np.isfinite(state).all() and min_z_torso <= state[2] <= max_z_torso
+        is_healthy = np.isfinite(state).all() and min_z_torso <= state[2] <= max_z_torso and not self.torso_upside_down()
 
         return not is_healthy
+

@@ -39,6 +39,10 @@ Always include in your zip:
   - README.md (max 400 words)
 """
 
+import os
+
+os.environ["MUJOCO_GL"] = "glfw"
+
 import argparse
 import os
 import numpy as np
@@ -64,15 +68,18 @@ from evorob.world.eval_world import EvalWorld
 # from evorob.world.robot.controllers.so2 import SO2Controller
 # MY_CONTROLLER = SO2Controller(input_size=27, output_size=8, hidden_size=8)
 
-MY_CONTROLLER = None
+from evorob.world.robot.controllers.mlp import NeuralNetworkController
+
+MY_CONTROLLER = NeuralNetworkController(input_size=27, output_size=8, hidden_size=16)
+
 
 # --- Paths ---
 # Option A: directory that contains x_best.npy (recommended)
-CHECKPOINT_DIR = "results/final_project"
+CHECKPOINT_DIR = None # "results/final_project"
 
 # Option B: provide the robot XML and genotype as separate files
-ROBOT_XML_PATH = None   # e.g. "/abs/path/to/Robot.xml"
-GENOTYPE_PATH  = None   # e.g. "/abs/path/to/x_best.npy"
+ROBOT_XML_PATH = "ant.xml"   # e.g. "/abs/path/to/Robot.xml"
+GENOTYPE_PATH  = "results/best_hill/470/x_best.npy"   # e.g. "/abs/path/to/x_best.npy"
 
 # --- Output ---
 OUTPUT_DIR = "evaluation_output"
@@ -92,10 +99,30 @@ def _neutral_reward(info: dict) -> float:
         - float(info.get("cfrc_cost",     0.0))
     )
 
+def remap_challenge1_weights(weights: np.ndarray) -> np.ndarray:
+    """Remap Challenge 1 output-layer weights to Final Project joint order.
+
+    Challenge 1:    [back-right-hip, back-right-ankle, front-left-hip, front-left-ankle,
+                     front-right-hip, front-right-ankle, back-left-hip, back-left-ankle]
+    Final Project:  [front-left-hip, front-left-ankle, front-right-hip, front-right-ankle,
+                     back-left-hip, back-left-ankle, back-right-hip, back-right-ankle]
+    """
+    n_input, n_hidden, n_output = 27, 16, 8
+    n_con1 = n_input * n_hidden   # 432
+    n_con2 = n_hidden * n_output  # 128
+
+    input_weights  = weights[:n_con1]
+    output_weights = weights[n_con1:n_con1 + n_con2].reshape(n_output, n_hidden)
+
+    reorder = [2, 3, 4, 5, 6, 7, 0, 1]
+    output_weights_reordered = output_weights[reorder, :]
+
+    return np.concatenate([input_weights, output_weights_reordered.flatten()])
+
 
 def run_episodes(world: EvalWorld, n_episodes: int, seed: int) -> list:
     rng = np.random.default_rng(seed)
-    env = gym.make("EvalEnv-v0", robot_path=world.world_file,
+    env = gym.make("EvalEnv-v0", robot_path=world.world_file, render_mode="human",
                    max_episode_steps=MAX_STEPS)
     rewards = []
 
@@ -122,7 +149,7 @@ def record_video(world: EvalWorld, out_path: str, seed: int) -> None:
     try:
         import imageio
         env = gym.make("EvalEnv-v0", robot_path=world.world_file,
-                       render_mode="rgb_array", max_episode_steps=MAX_STEPS)
+                       render_mode="human", max_episode_steps=MAX_STEPS)
         world.controller.reset_controller(batch_size=1)
         obs, _ = env.reset(seed=seed)
         frames = []
@@ -195,6 +222,7 @@ if __name__ == "__main__":
             raise FileNotFoundError(f"Genotype not found: {GENOTYPE_PATH}")
         world.update_robot_xml(ROBOT_XML_PATH)
         genotype = np.load(GENOTYPE_PATH, allow_pickle=True)
+        genotype = remap_challenge1_weights(genotype)  # Optional: remap if trained on Challenge 1
         world.controller.geno2pheno(genotype[:world.n_weights])
         print(f"Robot  : {ROBOT_XML_PATH}")
         print(f"Geno   : {GENOTYPE_PATH}  shape={genotype.shape}")
