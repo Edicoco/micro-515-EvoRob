@@ -578,7 +578,7 @@ def run_multi_task_evolution(
     n_repeats:       int = 3,
     n_steps:         int = 500,
     mutation_prob:   float = 0.2,
-    crossover_prob:  float = 0.5,
+    crossover_prob:  float = 0.7,
     bounds:          tuple = (-10, 10),
     ckpt_interval:   int = 10,
     results_dir:     str = None,
