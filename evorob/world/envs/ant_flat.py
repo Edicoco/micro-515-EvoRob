@@ -106,11 +106,11 @@ class AntFlatEnvironment(MujocoEnv):
         return np.concatenate((position, velocity))
 
     def _get_rew(self, x_velocity: float, action):
-        forward_reward_weight = 1.5
+        forward_reward_weight = 1.7
         healthy_reward_weight = 1.0
         ctrl_cost_weight = 0.2
         y_position = self.data.qpos[1]
-        lateral_penalty_weight = 0.4  # à tuner
+        lateral_penalty_weight = 0.1  # à tuner
 
         lateral_penalty = lateral_penalty_weight * (y_position ** 2)
 
@@ -118,9 +118,11 @@ class AntFlatEnvironment(MujocoEnv):
         healthy_reward = healthy_reward_weight
         ctrl_cost = ctrl_cost_weight * np.sum(np.square(action))
 
-        if self.torso_near_tipping():
+        if self.torso_near_tipping(): 
             risk_penalty = -1  # pénalité pour être proche du basculement
             healthy_reward += risk_penalty
+        elif self.torso_upside_down():
+            healthy_reward = -4  # pénalité sévère pour être à l'envers
 
         reward = forward_reward + healthy_reward - ctrl_cost - lateral_penalty
 
@@ -146,8 +148,8 @@ class AntFlatEnvironment(MujocoEnv):
 
     def _get_termination(self):
         state = self.state_vector()
-        min_z_torso, max_z_torso = (0.26, 1.0)
-        is_healthy = np.isfinite(state).all() and min_z_torso <= state[2] <= max_z_torso and not self.torso_upside_down()
+        min_z_torso, max_z_torso = (0.26, 2.0)
+        is_healthy = np.isfinite(state).all() and min_z_torso <= state[2] and not self.torso_upside_down()
 
         return not is_healthy
 

@@ -580,7 +580,7 @@ def run_multi_task_evolution(
     n_repeats:       int = 3,
     n_steps:         int = 500,
     mutation_prob:   float = 0.2,
-    crossover_prob:  float = 0.7,
+    crossover_prob:  float = 0.5,
     bounds:          tuple = (-10, 10),
     ckpt_interval:   int = 10,
     results_dir:     str = None,
@@ -765,9 +765,9 @@ if __name__ == "__main__":
     pop_size = 128 + active * K * N_PER_GENOME  # e.g. 128 + 3×4×32 = 512
 
     run_multi_task_evolution(
-        num_generations=300,
+        num_generations=400,
         population_size=pop_size,
-        n_parents=pop_size // 2,
+        n_parents=pop_size // 3,
         n_repeats=1,
         n_steps=500,
         ckpt_interval=10,

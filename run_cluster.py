@@ -52,7 +52,7 @@ N_REPEATS        = 2       # parallel episodes per terrain per individual
 # macOS uses 'spawn' which breaks nested multiprocessing (AsyncVectorEnv inside pool)
 # Linux (cluster) uses 'fork' which is safe → enable parallel eval there only
 N_WORKERS        = 0 if platform.system() == 'Darwin' else max(1, (os.cpu_count() or 1) // (N_REPEATS + 1))
-N_STEPS          = 500
+N_STEPS          = 600
 MUTATION_PROB    = 0.2
 CROSSOVER_PROB   = 0.5
 BOUNDS           = (-10, 10)
