@@ -4,6 +4,8 @@ import numpy as np
 
 from gymnasium.spaces import Box
 from gymnasium.envs.mujoco import MujocoEnv
+from scipy.spatial.transform import Rotation as R
+
 
 
 class AntFlatEnvironment(MujocoEnv):
@@ -70,8 +72,22 @@ class AntFlatEnvironment(MujocoEnv):
         self.set_state(qpos, qvel)
 
         observation = self._get_obs()
+        self.initial_y = self.data.qpos[1]
 
         return observation
+    
+    def get_yaw(self):
+
+        quat = self.data.qpos[3:7]
+        r = R.from_quat([
+            quat[1],
+            quat[2],
+            quat[3],
+            quat[0]
+        ])
+        yaw = r.as_euler('xyz')[2]
+
+        return yaw
 
     def step(self, action):
         torso_body_id = 1
@@ -107,35 +123,56 @@ class AntFlatEnvironment(MujocoEnv):
         return np.concatenate((position, velocity))
 
     def _get_rew(self, x_velocity: float, y_velocity: float, action):
-        forward_reward_weight  = 5.0
-        healthy_reward_weight  = 1.0
-        ctrl_cost_weight       = 0.1
-        y_pos_penalty_weight   = 0.1   # penalise drift off X axis
-        y_vel_penalty_weight   = 0.3   # penalise lateral velocity
-        slow_penalty_weight    = 4.0   # penalise not going forward
-        min_speed              = 0.1
 
+        # Reward weights
+        forward_reward_weight = 3.0
+        healthy_reward_weight = 1.0
+        ctrl_cost_weight = 0.3
+        lateral_pos_weight = 0.4
+        lateral_vel_weight = 0.1
+        heading_weight = 1.0
+
+        # World-frame position
         y_position = self.data.qpos[1]
+        # Relative lateral deviation from spawn
+        y_error = y_position - self.initial_y
+        # Robot orientation
+        yaw = self.get_yaw()
 
-        forward_reward  = x_velocity * forward_reward_weight
-        healthy_reward  = healthy_reward_weight
-        ctrl_cost       = ctrl_cost_weight * np.sum(np.square(action))
-        lateral_penalty = y_pos_penalty_weight * y_position ** 2
-        y_vel_penalty   = y_vel_penalty_weight * y_velocity ** 2
-        slow_penalty    = slow_penalty_weight * max(0.0, min_speed - x_velocity)
+        # Positive rewards
+        forward_reward = forward_reward_weight * x_velocity
+        healthy_reward = healthy_reward_weight
 
+        # Penalties
+        # Energy / torque regularization
+        ctrl_cost = ctrl_cost_weight * np.sum(np.square(action))
+        lateral_position_penalty = lateral_pos_weight * (y_error ** 2)
+        lateral_velocity_penalty = lateral_vel_weight * (y_velocity ** 2)
+        heading_penalty = heading_weight * (yaw ** 2)
+
+        # Stability penalties
         if self.torso_near_tipping():
             healthy_reward -= 1.0
         elif self.torso_upside_down():
             healthy_reward = -4.0
 
-        reward = (forward_reward + healthy_reward
-                  - ctrl_cost - lateral_penalty - y_vel_penalty - slow_penalty)
+        # Final reward
+        reward = (
+            forward_reward
+            + healthy_reward
+            - ctrl_cost
+            - lateral_position_penalty
+            - lateral_velocity_penalty
+            - heading_penalty
+        )
 
         reward_info = {
             "reward_forward": forward_reward,
-            "reward_ctrl":    -ctrl_cost,
             "reward_survive": healthy_reward,
+            "reward_ctrl": -ctrl_cost,
+            "penalty_lateral_pos": -lateral_position_penalty,
+            "penalty_lateral_vel": -lateral_velocity_penalty,
+            "penalty_heading": -heading_penalty,
         }
 
         return reward, reward_info

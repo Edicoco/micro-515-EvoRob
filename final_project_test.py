@@ -78,8 +78,8 @@ MY_CONTROLLER = NeuralNetworkController(input_size=27, output_size=8, hidden_siz
 CHECKPOINT_DIR = None # "results/final_project"
 
 # Option B: provide the robot XML and genotype as separate files
-ROBOT_XML_PATH = "results/final_project_cluster_0/mean2worst/Robot.xml"   # e.g. "/abs/path/to/Robot.xml"
-GENOTYPE_PATH  = "results/best_flat/2999/x_best.npy"   # e.g. "/abs/path/to/x_best.npy"
+ROBOT_XML_PATH = "results/flat_specialist_cmaes/20/Robot.xml"   # e.g. "/abs/path/to/Robot.xml"
+GENOTYPE_PATH  = "results/flat_specialist_cmaes/20/x_best.npy"   # e.g. "/abs/path/to/x_best.npy"
 
 # --- Output ---
 OUTPUT_DIR = "evaluation_output"
