@@ -148,10 +148,10 @@ def main(n_gen: int, pop_size: int, n_repeats: int, n_steps: int,
             "bounds":     [BOUNDS[0], BOUNDS[1]],
             "maxiter":    n_gen,
             "seed":       RANDOM_SEED,
-            "verbose":    -9,
-            "tolx":       1e-6,
-            "tolfun":     1e-6,
-            "noise_reeval": 0.1,  # re-eval 10% of pop to handle stochastic fitness
+            "verbose":        -9,
+            "tolx":           1e-6,
+            "tolfun":         1e-6,
+            "tolstagnation":  2000,  # don't stop on stagnation
         },
     )
 
