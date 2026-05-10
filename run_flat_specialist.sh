@@ -18,7 +18,7 @@ mkdir -p logs
 python train_flat_specialist.py \
     --n_gen     2000 \
     --pop_size  128  \
-    --n_repeats 2   \
+    --n_repeats 4   \
     --n_steps   1000 \
     --out_dir   results/flat_specialist_cmaes \
     --warm_start_dir results/best_flat/200/$(ls results/best_flat/ | grep -E '^[0-9]+$' | sort -n | tail -1)
