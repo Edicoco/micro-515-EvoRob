@@ -181,8 +181,7 @@ def main(n_gen: int, pop_size: int, n_repeats: int, n_steps: int,
                 print("CMA-ES stop condition reached.")
                 break
 
-            solutions = np.array(es.ask())  # (pop, N_PARAMS)
-            solutions = np.clip(solutions, BOUNDS[0], BOUNDS[1])
+            solutions = np.array(es.ask())  # (pop, N_PARAMS) — bounds handled by CMA-ES
             t_gen = time.time()
 
             print(f"[Gen {gen+1}/{n_gen}]  evaluating {len(solutions)} individuals  [{mode_str}]...", flush=True)

@@ -13,23 +13,9 @@
 source .venv/bin/activate
 mkdir -p logs
 
-# Warm-start from best existing flat checkpoint (optional)
-# Remove --warm_start_dir to start from random
-CKPT_DIR=results/flat_specialist_cmaes
-LAST_CKPT=$(ls "$CKPT_DIR" 2>/dev/null | grep -E '^[0-9]+$' | sort -n | tail -1)
-
-if [ -n "$LAST_CKPT" ] && [ -f "$CKPT_DIR/$LAST_CKPT/x_best.npy" ]; then
-    WARM="--warm_start_dir $CKPT_DIR/$LAST_CKPT"
-    echo "Warm-starting from $CKPT_DIR/$LAST_CKPT"
-else
-    WARM=""
-    echo "No checkpoint found, starting from random."
-fi
-
 python train_flat_specialist.py \
     --n_gen     2000 \
     --pop_size  128  \
     --n_repeats 4    \
     --n_steps   1000 \
-    --out_dir   "$CKPT_DIR" \
-    $WARM
+    --out_dir   results/flat_specialist_cmaes
