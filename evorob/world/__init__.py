@@ -38,4 +38,11 @@ register(
     max_episode_steps=1000,
 )
 
+# Robust flat specialist — improved reward for straight-line forward locomotion
+register(
+    id="RobustFlatEnv-v0",
+    entry_point="evorob.world.envs.ant_flat:AntFlatEnvironment",
+    max_episode_steps=1000,
+)
+
 __version__ = "0.1"

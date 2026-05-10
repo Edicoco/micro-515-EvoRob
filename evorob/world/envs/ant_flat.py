@@ -46,6 +46,7 @@ class AntFlatEnvironment(MujocoEnv):
         }
 
         self._reset_noise_scale: float = 0.1
+        self._main_body = "Base"
 
         # Define observation space.
         # Action space is automatically defined by MuJoCo.
@@ -82,7 +83,7 @@ class AntFlatEnvironment(MujocoEnv):
         x_velocity, y_velocity = xy_velocity
 
         observation = self._get_obs()
-        reward, reward_info = self._get_rew(x_velocity, action)
+        reward, reward_info = self._get_rew(x_velocity, y_velocity, action)
         terminated = self._get_termination()
         info = {
             "x_position": self.data.qpos[0],
@@ -105,35 +106,35 @@ class AntFlatEnvironment(MujocoEnv):
 
         return np.concatenate((position, velocity))
 
-    def _get_rew(self, x_velocity: float, action):
-        forward_reward_weight = 3
-        healthy_reward_weight = 1.0
-        ctrl_cost_weight = 0.1
+    def _get_rew(self, x_velocity: float, y_velocity: float, action):
+        forward_reward_weight  = 5.0
+        healthy_reward_weight  = 1.0
+        ctrl_cost_weight       = 0.1
+        y_pos_penalty_weight   = 0.1   # penalise drift off X axis
+        y_vel_penalty_weight   = 0.3   # penalise lateral velocity
+        slow_penalty_weight    = 4.0   # penalise not going forward
+        min_speed              = 0.1
+
         y_position = self.data.qpos[1]
-        lateral_penalty_weight = 0.07  # à tuner
 
-        lateral_penalty = lateral_penalty_weight * (y_position ** 2)
+        forward_reward  = x_velocity * forward_reward_weight
+        healthy_reward  = healthy_reward_weight
+        ctrl_cost       = ctrl_cost_weight * np.sum(np.square(action))
+        lateral_penalty = y_pos_penalty_weight * y_position ** 2
+        y_vel_penalty   = y_vel_penalty_weight * y_velocity ** 2
+        slow_penalty    = slow_penalty_weight * max(0.0, min_speed - x_velocity)
 
-        forward_reward = x_velocity * forward_reward_weight
-        healthy_reward = healthy_reward_weight
-        ctrl_cost = ctrl_cost_weight * np.sum(np.square(action))
-
-        # Add penalties for not going forward
-        if x_velocity < 0.1:
-            immobility_penalty = (0.1 - x_velocity) * 2.0  # pénalise aussi le recul
-            healthy_reward -= immobility_penalty
-
-        if self.torso_near_tipping(): 
-            risk_penalty = -1  # pénalité pour être proche du basculement
-            healthy_reward += risk_penalty
+        if self.torso_near_tipping():
+            healthy_reward -= 1.0
         elif self.torso_upside_down():
-            healthy_reward = -4  # pénalité sévère pour être à l'envers
+            healthy_reward = -4.0
 
-        reward = forward_reward + healthy_reward - ctrl_cost - lateral_penalty
+        reward = (forward_reward + healthy_reward
+                  - ctrl_cost - lateral_penalty - y_vel_penalty - slow_penalty)
 
         reward_info = {
             "reward_forward": forward_reward,
-            "reward_ctrl": -ctrl_cost,
+            "reward_ctrl":    -ctrl_cost,
             "reward_survive": healthy_reward,
         }
 
