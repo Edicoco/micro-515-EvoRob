@@ -44,8 +44,8 @@ ROOT_DIR    = get_project_root()
 _ASSETS     = join(ROOT_DIR, "evorob", "world", "robot", "assets")
 
 N_WEIGHTS     = 560
-N_BODY_PARAMS = 4
-N_PARAMS      = N_WEIGHTS + N_BODY_PARAMS
+N_BODY_PARAMS = 0
+N_PARAMS      = N_WEIGHTS
 
 POP_SIZE      = 128
 SIGMA0        = 0.3
@@ -139,9 +139,7 @@ def main(n_gen: int, pop_size: int, n_repeats: int, n_steps: int,
 
     x0 = _load_warm_start(warm_start_dir)
     if x0 is None:
-        body_center = _load_best_flat_body()
         x0 = np.random.uniform(BOUNDS[0], BOUNDS[1], N_PARAMS)
-        x0[N_WEIGHTS:] = body_center + np.random.normal(0, 0.1, N_BODY_PARAMS)
 
     es = cma.CMAEvolutionStrategy(
         x0.tolist(),
@@ -231,8 +229,7 @@ def main(n_gen: int, pop_size: int, n_repeats: int, n_steps: int,
             if gen % CKPT_INTERVAL == 0 and best_genome is not None:
                 ckpt = join(out_dir, str(gen))
                 os.makedirs(ckpt, exist_ok=True)
-                np.save(join(ckpt, "x_best.npy"),      best_genome[:N_WEIGHTS])
-                np.save(join(ckpt, "x_best_body.npy"), best_genome[N_WEIGHTS:])
+                np.save(join(ckpt, "x_best.npy"), best_genome)
                 np.save(join(ckpt, "x.npy"),           solutions)
                 np.save(join(ckpt, "f.npy"),           fitnesses)
                 if best_xml:
@@ -247,8 +244,7 @@ def main(n_gen: int, pop_size: int, n_repeats: int, n_steps: int,
     if best_genome is not None:
         final_dir = join(out_dir, "final")
         os.makedirs(final_dir, exist_ok=True)
-        np.save(join(final_dir, "x_best.npy"),      best_genome[:N_WEIGHTS])
-        np.save(join(final_dir, "x_best_body.npy"), best_genome[N_WEIGHTS:])
+        np.save(join(final_dir, "x_best.npy"), best_genome)
         if best_xml:
             with open(join(final_dir, "Robot.xml"), "w") as fh:
                 fh.write(best_xml)

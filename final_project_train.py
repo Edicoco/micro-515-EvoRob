@@ -123,6 +123,9 @@ class FinalWorld(World):
         body_raw = (genotype[self.n_weights:] if len(genotype) > self.n_weights
                     else np.zeros(self.n_body_params))
         body_params = (body_raw + 1) / 4 + 0.1
+        # body_params ≈ 0 when body_raw ≈ -1, giving zero-length segments and
+        # a MuJoCo "fromto points too close" error.  Clamp to a safe minimum.
+        body_params = np.sign(body_params + 1e-10) * np.maximum(np.abs(body_params), 0.12)
         self.controller.geno2pheno(control_params)
 
         front_leg, front_ankle, back_leg, back_ankle = body_params
