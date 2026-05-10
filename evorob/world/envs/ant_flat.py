@@ -127,9 +127,9 @@ class AntFlatEnvironment(MujocoEnv):
         # Reward weights
         forward_reward_weight = 3.0
         healthy_reward_weight = 1.0
-        ctrl_cost_weight = 0.3
+        ctrl_cost_weight = 0.2
         lateral_pos_weight = 0.4
-        lateral_vel_weight = 0.1
+        lateral_vel_weight = 0.15
         heading_weight = 1.0
 
         # World-frame position

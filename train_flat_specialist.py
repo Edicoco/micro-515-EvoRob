@@ -48,9 +48,9 @@ N_BODY_PARAMS = 4
 N_PARAMS      = N_WEIGHTS + N_BODY_PARAMS
 
 POP_SIZE      = 128
-SIGMA0        = 0.1
+SIGMA0        = 0.3
 BOUNDS        = (-10, 10)
-N_GEN         = 1000
+N_GEN         = 2000
 N_REPEATS     = 2
 N_STEPS       = 1000
 CKPT_INTERVAL = 10
@@ -94,6 +94,22 @@ def _eval_worker(args):
 # Warm-start helper
 # ---------------------------------------------------------------------------
 
+def _load_best_flat_body() -> np.ndarray:
+    """Body params encoding the standard ant XML morphology (x_best_body.xml).
+
+    Inverse of geno2pheno:  body_raw = (segment_param - 0.1) * 4 - 1
+    where segment_param = xy_length * sqrt(2).
+
+    Standard ant:  leg xy=0.20m  → param=0.2828 → raw=-0.269
+                   ankle xy=0.40m → param=0.5657 → raw=+0.863
+    """
+    leg   = (0.20 * np.sqrt(2) - 0.1) * 4 - 1   # ≈ -0.269
+    ankle = (0.40 * np.sqrt(2) - 0.1) * 4 - 1   # ≈ +0.863
+    body = np.array([leg, ankle, leg, ankle])
+    print(f"  body init center: standard ant XML  [leg={leg:.3f}, ankle={ankle:.3f}]")
+    return body
+
+
 def _load_warm_start(warm_start_dir: str | None) -> np.ndarray | None:
     if warm_start_dir is None:
         return None
@@ -103,7 +119,7 @@ def _load_warm_start(warm_start_dir: str | None) -> np.ndarray | None:
         print(f"  warm_start: x_best.npy not found in {warm_start_dir}, starting random.")
         return None
     ctrl = np.load(ctrl_path)
-    body = np.load(body_path) if os.path.isfile(body_path) else np.zeros(N_BODY_PARAMS)
+    body = np.load(body_path) if os.path.isfile(body_path) else _load_best_flat_body()
     x0 = np.concatenate([ctrl, body])
     print(f"  warm_start: loaded from {warm_start_dir}  shape={x0.shape}")
     return x0
@@ -123,8 +139,9 @@ def main(n_gen: int, pop_size: int, n_repeats: int, n_steps: int,
 
     x0 = _load_warm_start(warm_start_dir)
     if x0 is None:
+        body_center = _load_best_flat_body()
         x0 = np.random.uniform(BOUNDS[0], BOUNDS[1], N_PARAMS)
-        x0[N_WEIGHTS:] = np.random.normal(0, 0.1, N_BODY_PARAMS)
+        x0[N_WEIGHTS:] = body_center + np.random.normal(0, 0.1, N_BODY_PARAMS)
 
     es = cma.CMAEvolutionStrategy(
         x0.tolist(),
