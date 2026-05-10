@@ -56,6 +56,8 @@ N_STEPS       = 1000
 CKPT_INTERVAL = 10
 RANDOM_SEED   = 42
 
+SIGMA_RESTART  = 0.02   # restart CMA-ES when sigma drops below this
+
 N_WORKERS = 0 if platform.system() == "Darwin" else max(1, (os.cpu_count() or 1) // (N_REPEATS + 1))
 
 # ---------------------------------------------------------------------------
@@ -142,11 +144,14 @@ def main(n_gen: int, pop_size: int, n_repeats: int, n_steps: int,
         x0.tolist(),
         SIGMA0,
         {
-            "popsize":  pop_size,
-            "bounds":   [BOUNDS[0], BOUNDS[1]],
-            "maxiter":  n_gen,
-            "seed":     RANDOM_SEED,
-            "verbose":  -9,
+            "popsize":    pop_size,
+            "bounds":     [BOUNDS[0], BOUNDS[1]],
+            "maxiter":    n_gen,
+            "seed":       RANDOM_SEED,
+            "verbose":    -9,
+            "tolx":       1e-6,
+            "tolfun":     1e-6,
+            "noise_reeval": 0.1,  # re-eval 10% of pop to handle stochastic fitness
         },
     )
 
@@ -160,6 +165,7 @@ def main(n_gen: int, pop_size: int, n_repeats: int, n_steps: int,
     best_fitness = -np.inf
     best_xml     = None
     best_genome  = None
+    n_restarts   = 0
     _best_xml_stage = join(out_dir, "_best_robot.xml")
 
     pool_ctx = (
@@ -204,12 +210,22 @@ def main(n_gen: int, pop_size: int, n_repeats: int, n_steps: int,
 
             best_idx = int(fitnesses.argmax())
             gen_best = float(fitnesses[best_idx])
-            if gen_best > best_fitness:
-                best_fitness = gen_best
-                best_genome  = solutions[best_idx].copy()
-                best_xml     = xml_strs[best_idx]
-                with open(_best_xml_stage, "w") as fh:
-                    fh.write(best_xml)
+            if gen_best > best_fitness * 0.95:
+                # Re-evaluate candidate with 2× repeats to filter lucky outliers.
+                candidate = solutions[best_idx]
+                if pool_ctx is not None:
+                    confirmed = list(pool_ctx.map(
+                        _eval_worker, [(candidate, n_repeats * 2, n_steps)], chunksize=1
+                    ))[0][0]
+                else:
+                    confirmed = world.evaluate_individual(candidate, n_repeats=n_repeats * 2, n_steps=n_steps)
+                if confirmed > best_fitness:
+                    best_fitness = confirmed
+                    best_genome  = candidate.copy()
+                    best_xml     = xml_strs[best_idx]
+                    with open(_best_xml_stage, "w") as fh:
+                        fh.write(best_xml)
+                gen_best = confirmed
 
             elapsed = time.time() - t_gen
             avg_gen = (time.time() - t_start) / (gen + 1)
@@ -227,11 +243,28 @@ def main(n_gen: int, pop_size: int, n_repeats: int, n_steps: int,
                 ckpt = join(out_dir, str(gen))
                 os.makedirs(ckpt, exist_ok=True)
                 np.save(join(ckpt, "x_best.npy"), best_genome)
-                np.save(join(ckpt, "x.npy"),           solutions)
-                np.save(join(ckpt, "f.npy"),           fitnesses)
+                np.save(join(ckpt, "x.npy"),      solutions)
+                np.save(join(ckpt, "f.npy"),      fitnesses)
                 if best_xml:
                     with open(join(ckpt, "Robot.xml"), "w") as fh:
                         fh.write(best_xml)
+
+            if es.sigma < SIGMA_RESTART and best_genome is not None:
+                n_restarts += 1
+                new_sigma = SIGMA0 * (0.5 ** n_restarts)
+                print(f"  [restart #{n_restarts}]  sigma={es.sigma:.4f} < {SIGMA_RESTART}"
+                      f"  → new_sigma={new_sigma:.3f}  center=best_so_far", flush=True)
+                es = cma.CMAEvolutionStrategy(
+                    best_genome.tolist(),
+                    new_sigma,
+                    {
+                        "popsize": pop_size,
+                        "bounds":  [BOUNDS[0], BOUNDS[1]],
+                        "maxiter": n_gen,
+                        "seed":    RANDOM_SEED + n_restarts,
+                        "verbose": -9,
+                    },
+                )
 
     finally:
         if pool_ctx is not None:
