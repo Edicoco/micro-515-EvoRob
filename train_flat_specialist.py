@@ -48,10 +48,10 @@ N_BODY_PARAMS = 0
 N_PARAMS      = N_WEIGHTS
 
 POP_SIZE      = 128
-SIGMA0        = 0.2
-BOUNDS        = (-10, 10)
+SIGMA0        = 0.3
+BOUNDS        = (-1, 1)
 N_GEN         = 2000
-N_REPEATS     = 2
+N_REPEATS     = 4
 N_STEPS       = 1000
 CKPT_INTERVAL = 10
 RANDOM_SEED   = 42
@@ -114,13 +114,10 @@ def _load_warm_start(warm_start_dir: str | None) -> np.ndarray | None:
     if warm_start_dir is None:
         return None
     ctrl_path = join(warm_start_dir, "x_best.npy")
-    body_path  = join(warm_start_dir, "x_best_body.npy")
     if not os.path.isfile(ctrl_path):
         print(f"  warm_start: x_best.npy not found in {warm_start_dir}, starting random.")
         return None
-    ctrl = np.load(ctrl_path)
-    body = np.load(body_path) if os.path.isfile(body_path) else _load_best_flat_body()
-    x0 = np.concatenate([ctrl, body])
+    x0 = np.load(ctrl_path)[:N_WEIGHTS]
     print(f"  warm_start: loaded from {warm_start_dir}  shape={x0.shape}")
     return x0
 
