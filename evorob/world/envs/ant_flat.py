@@ -131,6 +131,7 @@ class AntFlatEnvironment(MujocoEnv):
         lateral_pos_weight = 0.4
         lateral_vel_weight = 0.15
         heading_weight = 1.0
+        HL_torso = 0.26  
 
         # World-frame position
         y_position = self.data.qpos[1]
@@ -138,6 +139,10 @@ class AntFlatEnvironment(MujocoEnv):
         y_error = y_position - self.initial_y
         # Robot orientation
         yaw = self.get_yaw()
+
+        # Penalize if torso is too low (fallen) or too high (jumping), with some tolerance for natural variation in height
+        if self.state_vector()[2] < 0.26 * 1.1 or self.state_vector()[2] > 1 * 0.9:
+            healthy_reward_weight = -1.0
 
         # Positive rewards
         forward_reward = forward_reward_weight * x_velocity
@@ -191,8 +196,8 @@ class AntFlatEnvironment(MujocoEnv):
 
     def _get_termination(self):
         state = self.state_vector()
-        min_z_torso, max_z_torso = (0.26, 2.0)
-        is_healthy = np.isfinite(state).all() and min_z_torso <= state[2] and not self.torso_upside_down()
+        min_z_torso, max_z_torso = (0.26, 1.1)
+        is_healthy = np.isfinite(state).all() and min_z_torso <= state[2] <= max_z_torso and not self.torso_upside_down()
 
         return not is_healthy
 

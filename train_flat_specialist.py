@@ -48,7 +48,7 @@ N_BODY_PARAMS = 0
 N_PARAMS      = N_WEIGHTS
 
 POP_SIZE      = 128
-SIGMA0        = 0.3
+SIGMA0        = 0.2
 BOUNDS        = (-10, 10)
 N_GEN         = 2000
 N_REPEATS     = 2
