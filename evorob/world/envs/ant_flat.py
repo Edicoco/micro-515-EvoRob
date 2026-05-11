@@ -127,11 +127,10 @@ class AntFlatEnvironment(MujocoEnv):
         # Reward weights
         forward_reward_weight = 3.0
         healthy_reward_weight = 1.0
-        ctrl_cost_weight = 0.2
+        ctrl_cost_weight = 0.6
         lateral_pos_weight = 0.4
         lateral_vel_weight = 0.15
         heading_weight = 1.0
-        HL_torso = 0.26  
 
         # World-frame position
         y_position = self.data.qpos[1]
@@ -142,7 +141,7 @@ class AntFlatEnvironment(MujocoEnv):
 
         # Penalize if torso is too low (fallen) or too high (jumping), with some tolerance for natural variation in height
         if self.state_vector()[2] < 0.26 * 1.1 or self.state_vector()[2] > 1 * 0.9:
-            healthy_reward_weight = -1.0
+            healthy_reward_weight = -3.0
 
         # Positive rewards
         forward_reward = forward_reward_weight * x_velocity
