@@ -2,7 +2,7 @@
 train_flat_specialist.py  —  CMA-ES specialist on flat terrain.
 
 Objective: evolve a robust robot that advances STRAIGHT along the X axis.
-Reward: see AntFlatEnvironment._get_rew (RobustFlatEnv-v0).
+Reward: see EvalFlatEnv.step (FlatEnv-v0).
 
 Warm-start: loads best genome from --warm_start_dir if provided.
 Output:     results/flat_specialist_cmaes/  (or --out_dir)
@@ -25,12 +25,12 @@ from concurrent.futures import ProcessPoolExecutor
 from os.path import join
 from tempfile import TemporaryDirectory
 
-import cma
 import gymnasium as gym
 import numpy as np
 from gymnasium.vector import AsyncVectorEnv
 
-import evorob.world  # noqa: F401 — registers RobustFlatEnv-v0
+import evorob.world  # noqa: F401 — registers FlatEnv-v0
+from evorob.algorithms.ea_api import CMAESAPI
 from evorob.utils.filesys import get_project_root
 from evorob.world.robot.controllers.mlp import NeuralNetworkController
 from evorob.world.robot.morphology.ant_custom_robot import AntRobot
@@ -48,8 +48,8 @@ N_BODY_PARAMS = 0
 N_PARAMS      = N_WEIGHTS
 
 POP_SIZE      = 128
-SIGMA0        = 0.3
-BOUNDS        = (-1, 1)
+SIGMA0        = 0.1
+BOUNDS        = (-10, 10)
 N_GEN         = 2000
 N_REPEATS     = 4
 N_STEPS       = 1000
@@ -65,13 +65,13 @@ N_WORKERS = 0 if platform.system() == "Darwin" else max(1, (os.cpu_count() or 1)
 # ---------------------------------------------------------------------------
 
 class FlatSpecialistWorld(FinalWorld):
-    """Evaluates a genotype on RobustFlatEnv-v0 only."""
+    """Evaluates a genotype on FlatEnv-v0 only."""
 
     def evaluate_individual(self, genotype: np.ndarray,
                             n_repeats: int = N_REPEATS,
                             n_steps: int = N_STEPS) -> float:
         self.update_robot_xml(genotype)
-        return self._run_env("RobustFlatEnv-v0", self.flat_world_file, n_repeats, n_steps)
+        return self._run_env("FlatEnv-v0", self.flat_world_file, n_repeats, n_steps)
 
 
 # ---------------------------------------------------------------------------
@@ -140,20 +140,16 @@ def main(n_gen: int, pop_size: int, n_repeats: int, n_steps: int,
     if x0 is None:
         x0 = np.random.uniform(BOUNDS[0], BOUNDS[1], N_PARAMS)
 
-    es = cma.CMAEvolutionStrategy(
-        x0.tolist(),
-        SIGMA0,
-        {
-            "popsize":    pop_size,
-            "bounds":     [BOUNDS[0], BOUNDS[1]],
-            "maxiter":    n_gen,
-            "seed":       RANDOM_SEED,
-            "verbose":        -9,
-            "tolx":           1e-6,
-            "tolfun":         1e-6,
-            "tolstagnation":  2000,  # don't stop on stagnation
-        },
+    es = CMAESAPI(
+        n_params=N_PARAMS,
+        population_size=pop_size,
+        num_generations=n_gen,
+        sigma=SIGMA0,
+        bounds=BOUNDS,
+        output_dir=out_dir,
+        x0=x0,
     )
+    es.es.opts.set({"seed": RANDOM_SEED, "verbose": -9, "tolx": 1e-6, "tolfun": 1e-6, "tolstagnation": 2000})
 
     mode_str = f"{N_WORKERS} workers" if N_WORKERS > 0 else "sequential (macOS)"
     print(f"\nCMA-ES flat specialist")
@@ -177,11 +173,11 @@ def main(n_gen: int, pop_size: int, n_repeats: int, n_steps: int,
 
     try:
         for gen in range(n_gen):
-            if es.stop():
+            if es.es.stop():
                 print("CMA-ES stop condition reached.")
                 break
 
-            solutions = np.array(es.ask())  # (pop, N_PARAMS) — bounds handled by CMA-ES
+            solutions = es.ask()  # (pop, N_PARAMS) — bounds handled by CMA-ES
             t_gen = time.time()
 
             print(f"[Gen {gen+1}/{n_gen}]  evaluating {len(solutions)} individuals  [{mode_str}]...", flush=True)
@@ -204,8 +200,7 @@ def main(n_gen: int, pop_size: int, n_repeats: int, n_steps: int,
                     if (idx + 1) % log_every == 0 or idx == len(solutions) - 1:
                         print(f"  [{idx+1}/{len(solutions)}]  fit={f:8.2f}  ({time.time()-t0:.1f}s/ind)", flush=True)
 
-            # CMA-ES minimizes → negate
-            es.tell(solutions.tolist(), (-fitnesses).tolist())
+            es.tell(solutions, fitnesses)  # CMAESAPI negates internally
 
             best_idx = int(fitnesses.argmax())
             gen_best = float(fitnesses[best_idx])
@@ -233,7 +228,7 @@ def main(n_gen: int, pop_size: int, n_repeats: int, n_steps: int,
                 f"[Gen {gen+1}/{n_gen}]  done in {elapsed:.1f}s"
                 f"  |  gen_best={gen_best:.2f}"
                 f"  |  best_so_far={best_fitness:.2f}"
-                f"  |  sigma={es.sigma:.3f}"
+                f"  |  sigma={es.es.sigma:.3f}"
                 f"  |  ETA {eta_str}",
                 flush=True,
             )
@@ -248,22 +243,21 @@ def main(n_gen: int, pop_size: int, n_repeats: int, n_steps: int,
                     with open(join(ckpt, "Robot.xml"), "w") as fh:
                         fh.write(best_xml)
 
-            if es.sigma < SIGMA_RESTART and best_genome is not None:
+            if es.es.sigma < SIGMA_RESTART and best_genome is not None:
                 n_restarts += 1
                 new_sigma = SIGMA0 * (0.5 ** n_restarts)
-                print(f"  [restart #{n_restarts}]  sigma={es.sigma:.4f} < {SIGMA_RESTART}"
+                print(f"  [restart #{n_restarts}]  sigma={es.es.sigma:.4f} < {SIGMA_RESTART}"
                       f"  → new_sigma={new_sigma:.3f}  center=best_so_far", flush=True)
-                es = cma.CMAEvolutionStrategy(
-                    best_genome.tolist(),
-                    new_sigma,
-                    {
-                        "popsize": pop_size,
-                        "bounds":  [BOUNDS[0], BOUNDS[1]],
-                        "maxiter": n_gen,
-                        "seed":    RANDOM_SEED + n_restarts,
-                        "verbose": -9,
-                    },
+                es = CMAESAPI(
+                    n_params=N_PARAMS,
+                    population_size=pop_size,
+                    num_generations=n_gen,
+                    sigma=new_sigma,
+                    bounds=BOUNDS,
+                    output_dir=out_dir,
+                    x0=best_genome,
                 )
+                es.es.opts.set({"seed": RANDOM_SEED + n_restarts, "verbose": -9})
 
     finally:
         if pool_ctx is not None:
@@ -291,7 +285,7 @@ if __name__ == "__main__":
     parser.add_argument("--n_repeats",      type=int,   default=N_REPEATS)
     parser.add_argument("--n_steps",        type=int,   default=N_STEPS)
     parser.add_argument("--out_dir",        type=str,   default=join(ROOT_DIR, "results", "flat_specialist_cmaes"))
-    parser.add_argument("--warm_start_dir", type=str,   default=None,
+    parser.add_argument("--warm_start_dir", type=str,   default=join(ROOT_DIR, "results", "best_flat", "2999"),
                         help="Directory with x_best.npy to warm-start CMA-ES")
     args = parser.parse_args()
     main(

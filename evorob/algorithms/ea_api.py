@@ -1,5 +1,3 @@
-from curses import raw
-
 import numpy as np
 import cma
 from evorob.algorithms.base_ea import EA
@@ -17,6 +15,7 @@ class CMAESAPI(EA):
         sigma: float = 0.15,
         bounds: tuple[int, int] = (-10, 10),
         output_dir: str = "./results/CMAES",
+        x0: np.ndarray | None = None,
     ):
         self.population_size = population_size
         self.n_gen = num_generations
@@ -32,10 +31,10 @@ class CMAESAPI(EA):
         self.x = None
         self.f = None
 
-        # Initialize with random mean
-        # initial_mean = np.random.uniform(bounds[0], bounds[1], n_params)
-        initial_mean = np.load("x_best.npy")
-        initial_mean = np.clip(initial_mean, bounds[0], bounds[1])
+        if x0 is not None:
+            initial_mean = np.clip(x0, bounds[0], bounds[1])
+        else:
+            initial_mean = np.random.uniform(bounds[0], bounds[1], n_params)
 
         # Create CMA-ES optimizer
         opts = {"popsize": population_size, "bounds": bounds}
