@@ -247,20 +247,8 @@ def main(n_gen: int, pop_size: int, n_repeats: int, n_steps: int,
                         fh.write(best_xml)
 
             if es.es.sigma < SIGMA_RESTART and best_genome is not None:
-                n_restarts += 1
-                new_sigma = SIGMA0 * (0.5 ** n_restarts)
-                print(f"  [restart #{n_restarts}]  sigma={es.es.sigma:.4f} < {SIGMA_RESTART}"
-                      f"  → new_sigma={new_sigma:.3f}  center=best_so_far", flush=True)
-                es = CMAESAPI(
-                    n_params=N_PARAMS,
-                    population_size=pop_size,
-                    num_generations=n_gen,
-                    sigma=new_sigma,
-                    bounds=BOUNDS,
-                    output_dir=out_dir,
-                    x0=best_genome,
-                )
-                es.es.opts.set({"seed": RANDOM_SEED + n_restarts, "verbose": -9})
+                print(f"[Gen {gen+1}] sigma={es.es.sigma:.4f} < {SIGMA_RESTART} → convergé, arrêt.")
+                break
 
     finally:
         if pool_ctx is not None:
