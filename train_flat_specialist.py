@@ -34,7 +34,7 @@ from evorob.algorithms.ea_api import CMAESAPI
 from evorob.utils.filesys import get_project_root
 from evorob.world.robot.controllers.mlp import NeuralNetworkController
 from evorob.world.robot.morphology.ant_custom_robot import AntRobot
-from final_project_train import FinalWorld
+from final_project_train import FinalWorld, remap_challenge1_weights
 
 # ---------------------------------------------------------------------------
 # Hyper-parameters
@@ -120,7 +120,10 @@ def _load_warm_start(warm_start_dir: str | None) -> np.ndarray | None:
         print(f"  warm_start: x_best.npy not found in {warm_start_dir}, starting random.")
         return None
     x0 = np.load(ctrl_path)[:N_WEIGHTS]
-    print(f"  warm_start: loaded from {warm_start_dir}  shape={x0.shape}")
+    print(f"  warm_start: remap from challenge 1 applied. If training is not based on a challenge 1 checkpoint, consider removing remap_challenge1_weights() to preserve original joint order.")
+    print(f"  warm_start: loaded control params from {ctrl_path}  shape={x0.shape}")
+    x0 = remap_challenge1_weights(x0)
+    print(f"  warm_start: loaded from {warm_start_dir}  (Challenge-1 joint order remapped)  shape={x0.shape}")
     return x0
 
 
