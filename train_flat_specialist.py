@@ -220,6 +220,7 @@ def main(n_gen: int, pop_size: int, n_repeats: int, n_steps: int,
                     best_fitness = confirmed
                     best_genome  = candidate.copy()
                     best_xml     = xml_strs[best_idx]
+                    os.makedirs(out_dir, exist_ok=True)
                     with open(_best_xml_stage, "w") as fh:
                         fh.write(best_xml)
                 gen_best = confirmed

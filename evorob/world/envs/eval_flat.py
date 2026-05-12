@@ -66,6 +66,9 @@ class EvalFlatEnv(MujocoEnv, utils.EzPickle):
             low=-np.inf, high=np.inf, shape=(obs_size,), dtype=np.float64
         )
 
+        self.initial_y = self.data.qpos[1]
+
+
     def step(self, action):
         x_before = self.data.qpos[0]
         y_before = self.data.qpos[1]
@@ -82,6 +85,8 @@ class EvalFlatEnv(MujocoEnv, utils.EzPickle):
         if x_velocity  > 0.1 :
             self.vel_count = 0
 
+        y_divergence = abs(self.data.qpos[1] - self.initial_y)
+
         if float(self.data.qpos[2]) < 0.35 or float(self.data.qpos[2]) > 0.9:
             healthy_reward = -0.5
         else:
@@ -93,7 +98,7 @@ class EvalFlatEnv(MujocoEnv, utils.EzPickle):
         terminated = self._is_terminated()
         if self.vel_count > 50 :
             terminated = True
-        reward = healthy_reward + x_velocity * 1.3 - 0.9 * y_velocity - ctrl_cost - cfrc_cost 
+        reward = healthy_reward + x_velocity * 1.5 - 0.6 * y_velocity - ctrl_cost - cfrc_cost - 0.7 * y_divergence
         if terminated:
             reward = -10.0
 
