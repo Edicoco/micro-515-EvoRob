@@ -48,7 +48,7 @@ N_BODY_PARAMS = 0
 N_PARAMS      = N_WEIGHTS
 
 POP_SIZE      = 512
-SIGMA0        = 0.1
+SIGMA0        = 0.05
 BOUNDS        = (-10, 10)
 N_GEN         = 2000
 N_REPEATS     = 4
@@ -56,7 +56,7 @@ N_STEPS       = 1000
 CKPT_INTERVAL = 10
 RANDOM_SEED   = 42
 
-SIGMA_RESTART  = 0.02   # restart CMA-ES when sigma drops below this
+SIGMA_RESTART  = 0.01   # restart CMA-ES when sigma drops below this
 
 N_WORKERS = 0 if platform.system() == "Darwin" else max(1, (os.cpu_count() or 1) // (N_REPEATS + 1))
 
