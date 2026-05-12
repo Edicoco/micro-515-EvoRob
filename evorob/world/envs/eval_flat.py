@@ -75,6 +75,7 @@ class EvalFlatEnv(MujocoEnv, utils.EzPickle):
         
         x_velocity = (x_after - x_before) / self.dt
         y_velocity = (y_after - y_before) / self.dt
+        y_velocity = abs(y_velocity)
 
         if x_velocity < 0.1 :
             self.vel_count += 1
