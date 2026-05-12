@@ -30,8 +30,8 @@ class EvalFlatEnv(MujocoEnv, utils.EzPickle):
         robot_path: str,
         frame_skip: int = 5,
         default_camera_config: dict = DEFAULT_CAMERA_CONFIG,
-        ctrl_cost_weight: float = 0.1, # 0.1,
-        cfrc_cost_weight: float = 5e-4,
+        ctrl_cost_weight: float = 0.15, # 0.1,
+        cfrc_cost_weight: float = 1e-3,
         reset_noise_scale: float = 0.1,
         **kwargs,
     ):
@@ -82,14 +82,18 @@ class EvalFlatEnv(MujocoEnv, utils.EzPickle):
         if x_velocity  > 0.1 :
             self.vel_count = 0
 
-        healthy_reward = 1.0
+        if float(self.data.qpos[2]) < 0.35 or float(self.data.qpos[2]) > 0.9:
+            healthy_reward = -0.5
+        else:
+            healthy_reward = 1.0
+
         ctrl_cost = float(np.sum(action ** 2) * self._ctrl_cost_weight)
         cfrc_cost = float(np.sum(self.data.cfrc_ext[1:] ** 2) * self._cfrc_cost_weight)
 
         terminated = self._is_terminated()
         if self.vel_count > 50 :
             terminated = True
-        reward = healthy_reward + x_velocity * 1.5 - 0.8 * y_velocity - ctrl_cost - cfrc_cost 
+        reward = healthy_reward + x_velocity * 1.3 - 0.9 * y_velocity - ctrl_cost - cfrc_cost 
         if terminated:
             reward = -10.0
 
@@ -110,7 +114,7 @@ class EvalFlatEnv(MujocoEnv, utils.EzPickle):
         z = float(self.data.qpos[2])
         return (
             not np.isfinite(self.state_vector()).all()
-            or z < 0.2
+            or z < 0.26
             or z > 1.0
         )
 
