@@ -122,7 +122,7 @@ def _load_warm_start(warm_start_dir: str | None) -> np.ndarray | None:
     x0 = np.load(ctrl_path)[:N_WEIGHTS]
     print(f"  warm_start: remap from challenge 1 applied. If training is not based on a challenge 1 checkpoint, consider removing remap_challenge1_weights() to preserve original joint order.")
     print(f"  warm_start: loaded control params from {ctrl_path}  shape={x0.shape}")
-    # x0 = remap_challenge1_weights(x0)
+    0 = remap_challenge1_weights(x0)
     print(f"  warm_start: loaded from {warm_start_dir}  (Challenge-1 joint order remapped)  shape={x0.shape}")
     return x0
 
@@ -277,7 +277,7 @@ if __name__ == "__main__":
     parser.add_argument("--n_repeats",      type=int,   default=N_REPEATS)
     parser.add_argument("--n_steps",        type=int,   default=N_STEPS)
     parser.add_argument("--out_dir",        type=str,   default=join(ROOT_DIR, "results", "ice_specialist_cmaes"))
-    parser.add_argument("--warm_start_dir", type=str,   default=join(ROOT_DIR, "results/flat_specialist_cmaes/final"),
+    parser.add_argument("--warm_start_dir", type=str,   default=join(ROOT_DIR, "results/20260324_085356_nsga_ckpts"),
                         help="Directory with x_best.npy to warm-start CMA-ES")
     args = parser.parse_args()
     main(
