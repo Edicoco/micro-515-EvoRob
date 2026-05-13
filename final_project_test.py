@@ -45,7 +45,7 @@ os.environ["MUJOCO_GL"] = "glfw"
 
 import argparse
 import os
-import numpy as np
+import numpy as np          
 
 os.environ.setdefault("MUJOCO_GL", "egl")
 
