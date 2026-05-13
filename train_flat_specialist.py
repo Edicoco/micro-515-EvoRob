@@ -48,15 +48,15 @@ N_BODY_PARAMS = 0
 N_PARAMS      = N_WEIGHTS
 
 POP_SIZE      = 512
-SIGMA0        = 0.05
+SIGMA0        = 0.01
 BOUNDS        = (-10, 10)
 N_GEN         = 2000
 N_REPEATS     = 4
-N_STEPS       = 1000
+N_STEPS       = 500
 CKPT_INTERVAL = 10
 RANDOM_SEED   = 42
 
-SIGMA_RESTART  = 0.01   # restart CMA-ES when sigma drops below this
+SIGMA_RESTART  = 0.001   # restart CMA-ES when sigma drops below this
 
 N_WORKERS = 0 if platform.system() == "Darwin" else max(1, (os.cpu_count() or 1) // (N_REPEATS + 1))
 
@@ -71,7 +71,7 @@ class FlatSpecialistWorld(FinalWorld):
                             n_repeats: int = N_REPEATS,
                             n_steps: int = N_STEPS) -> float:
         self.update_robot_xml(genotype)
-        return self._run_env("FlatEnv-v0", self.flat_world_file, n_repeats, n_steps)
+        return self._run_env("IceEnv-v0", self.flat_world_file, n_repeats, n_steps)
 
 
 # ---------------------------------------------------------------------------
