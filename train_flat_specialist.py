@@ -71,7 +71,7 @@ class FlatSpecialistWorld(FinalWorld):
                             n_repeats: int = N_REPEATS,
                             n_steps: int = N_STEPS) -> float:
         self.update_robot_xml(genotype)
-        return self._run_env("IceEnv-v0", self.flat_world_file, n_repeats, n_steps)
+        return self._run_env("IceEnv-v0", self.ice_world_file, n_repeats, n_steps)
 
 
 # ---------------------------------------------------------------------------
