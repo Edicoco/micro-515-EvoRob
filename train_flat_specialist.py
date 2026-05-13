@@ -122,7 +122,7 @@ def _load_warm_start(warm_start_dir: str | None) -> np.ndarray | None:
     x0 = np.load(ctrl_path)[:N_WEIGHTS]
     print(f"  warm_start: remap from challenge 1 applied. If training is not based on a challenge 1 checkpoint, consider removing remap_challenge1_weights() to preserve original joint order.")
     print(f"  warm_start: loaded control params from {ctrl_path}  shape={x0.shape}")
-    0 = remap_challenge1_weights(x0)
+    x0 = remap_challenge1_weights(x0)
     print(f"  warm_start: loaded from {warm_start_dir}  (Challenge-1 joint order remapped)  shape={x0.shape}")
     return x0
 
