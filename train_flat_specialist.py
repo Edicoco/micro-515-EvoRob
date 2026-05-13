@@ -276,8 +276,8 @@ if __name__ == "__main__":
     parser.add_argument("--pop_size",       type=int,   default=POP_SIZE)
     parser.add_argument("--n_repeats",      type=int,   default=N_REPEATS)
     parser.add_argument("--n_steps",        type=int,   default=N_STEPS)
-    parser.add_argument("--out_dir",        type=str,   default=join(ROOT_DIR, "results", "flat_specialist_cmaes"))
-    parser.add_argument("--warm_start_dir", type=str,   default=join(ROOT_DIR, "results", "best_flat", "2999"),
+    parser.add_argument("--out_dir",        type=str,   default=join(ROOT_DIR, "results", "ice_specialist_cmaes"))
+    parser.add_argument("--warm_start_dir", type=str,   default=join(ROOT_DIR, "results/flat_specialist_cmaes/final"),
                         help="Directory with x_best.npy to warm-start CMA-ES")
     args = parser.parse_args()
     main(

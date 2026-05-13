@@ -18,4 +18,4 @@ python train_flat_specialist.py \
     --pop_size  128  \
     --n_repeats 4    \
     --n_steps   500 \
-    --out_dir   results/flat_specialist_cmaes
+    --out_dir   results/flat_specialist_cmaes/final
