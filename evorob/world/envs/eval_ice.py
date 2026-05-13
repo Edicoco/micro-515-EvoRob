@@ -31,8 +31,8 @@ class EvalIceEnv(MujocoEnv, utils.EzPickle):
         robot_path: str,
         frame_skip: int = 5,
         default_camera_config: dict = DEFAULT_CAMERA_CONFIG,
-        ctrl_cost_weight: float = 0.2,
-        cfrc_cost_weight: float = 5e-4,
+        ctrl_cost_weight: float = 0.1,
+        cfrc_cost_weight: float = 5e-5,
         reset_noise_scale: float = 0.1,
         **kwargs,
     ):
@@ -89,7 +89,7 @@ class EvalIceEnv(MujocoEnv, utils.EzPickle):
 
         y_divergence = abs(self.data.qpos[1] - self.initial_y)
 
-        if float(self.data.qpos[2]) < 0.35 or float(self.data.qpos[2]) > 0.9:
+        if float(self.data.qpos[2]) < 0.3 or float(self.data.qpos[2]) > 0.95:
             healthy_reward = -0.5
         else:
             healthy_reward = 1.0
@@ -101,7 +101,7 @@ class EvalIceEnv(MujocoEnv, utils.EzPickle):
         if self.vel_count > 50 :
             terminated = True
         
-        reward = healthy_reward + x_velocity * 1.5 - 0.6 * y_velocity - ctrl_cost - cfrc_cost - 0.5 * y_divergence
+        reward = healthy_reward + x_velocity * 3 - 0.6 * y_velocity - ctrl_cost - cfrc_cost - 0.6 * y_divergence
         if terminated:
             reward = -10.0
 
