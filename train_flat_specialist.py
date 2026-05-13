@@ -52,11 +52,11 @@ SIGMA0        = 0.01
 BOUNDS        = (-10, 10)
 N_GEN         = 2000
 N_REPEATS     = 4
-N_STEPS       = 500
+N_STEPS       = 100
 CKPT_INTERVAL = 10
 RANDOM_SEED   = 42
 
-SIGMA_RESTART  = 0.001   # restart CMA-ES when sigma drops below this
+SIGMA_RESTART  = 0.01   # restart CMA-ES when sigma drops below this
 
 N_WORKERS = 0 if platform.system() == "Darwin" else max(1, (os.cpu_count() or 1) // (N_REPEATS + 1))
 

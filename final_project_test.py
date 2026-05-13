@@ -122,7 +122,7 @@ def remap_challenge1_weights(weights: np.ndarray) -> np.ndarray:
 
 def run_episodes(world: EvalWorld, n_episodes: int, seed: int) -> list:
     rng = np.random.default_rng(seed)
-    env = gym.make("IceEnv-v0", robot_path=world.world_file, render_mode="human",
+    env = gym.make("EvalEnv-v0", robot_path=world.world_file, render_mode="human",
                    max_episode_steps=MAX_STEPS)
     rewards = []
 
@@ -148,7 +148,7 @@ def run_episodes(world: EvalWorld, n_episodes: int, seed: int) -> list:
 def record_video(world: EvalWorld, out_path: str, seed: int) -> None:
     try:
         import imageio
-        env = gym.make("IceEnv-v0", robot_path=world.world_file,
+        env = gym.make("EvalEnv-v0", robot_path=world.world_file,
                        render_mode="human", max_episode_steps=MAX_STEPS)
         world.controller.reset_controller(batch_size=1)
         obs, _ = env.reset(seed=seed)
