@@ -67,6 +67,8 @@ class EvalIceEnv(MujocoEnv, utils.EzPickle):
         )
 
         self.initial_y = self.data.qpos[1]
+        self.vel_count = 0
+
 
 
     def step(self, action):
