@@ -53,6 +53,9 @@ import evorob.world          # registers EvalEnv-v0
 import gymnasium as gym
 
 from evorob.world.eval_world import EvalWorld
+from evorob.world.envs.eval_ice import EvalIceEnv
+from evorob.world.envs.eval_hill import EvalHillEnv
+
 
 # ===========================================================================
 # STUDENT CONFIGURATION — edit this section
@@ -79,7 +82,7 @@ CHECKPOINT_DIR = None # "results/final_project"
 
 # Option B: provide the robot XML and genotype as separate files
 ROBOT_XML_PATH = "results/best_flat/x_best_body.xml"   # e.g. "/abs/path/to/Robot.xml"
-GENOTYPE_PATH  = "results/ice_specialist_cmaes/final/x_best.npy"   # e.g. "/abs/path/to/x_best.npy"
+GENOTYPE_PATH  = "results/ice_specialist_cmaes/100/x_best.npy"   # e.g. "/abs/path/to/x_best.npy"
 
 # --- Output ---
 OUTPUT_DIR = "evaluation_output"

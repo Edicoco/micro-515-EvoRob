@@ -14,7 +14,7 @@ source .venv/bin/activate
 mkdir -p logs
 
 python train_flat_specialist.py \
-    --n_gen     500 \
+    --n_gen     2000 \
     --pop_size  256  \
     --n_repeats 3    \
     --n_steps   500 \
