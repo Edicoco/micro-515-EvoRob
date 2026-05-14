@@ -104,7 +104,7 @@ class EvalIceEnv(MujocoEnv, utils.EzPickle):
         if self._torso_upside_down():
             terminated = True
         
-        reward = healthy_reward + x_velocity * 3 - 0.6 * y_velocity - ctrl_cost - cfrc_cost - 0.6 * y_divergence
+        reward = healthy_reward + x_velocity * 3 - 0.3 * y_velocity - ctrl_cost - cfrc_cost - 1.2 * y_divergence
         if terminated:
             reward = -15.0
 
