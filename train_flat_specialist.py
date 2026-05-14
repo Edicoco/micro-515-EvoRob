@@ -34,7 +34,8 @@ from evorob.algorithms.ea_api import CMAESAPI
 from evorob.utils.filesys import get_project_root
 from evorob.world.robot.controllers.mlp import NeuralNetworkController
 from evorob.world.robot.morphology.ant_custom_robot import AntRobot
-from final_project_train import FinalWorld, remap_challenge1_weights
+from final_project_train import FinalWorld
+from final_project_test import remap_challenge1_weights
 
 # ---------------------------------------------------------------------------
 # Hyper-parameters
