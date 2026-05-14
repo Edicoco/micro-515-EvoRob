@@ -79,7 +79,7 @@ CHECKPOINT_DIR = None # "results/final_project"
 
 # Option B: provide the robot XML and genotype as separate files
 ROBOT_XML_PATH = "results/best_flat/x_best_body.xml"   # e.g. "/abs/path/to/Robot.xml"
-GENOTYPE_PATH  = "results/20260324_085356_nsga_ckpts/best_ice_controller.npy"   # e.g. "/abs/path/to/x_best.npy"
+GENOTYPE_PATH  = "results/ice_specialist_cmaes/final/x_best.npy"   # e.g. "/abs/path/to/x_best.npy"
 
 # --- Output ---
 OUTPUT_DIR = "evaluation_output"
@@ -222,7 +222,7 @@ if __name__ == "__main__":
             raise FileNotFoundError(f"Genotype not found: {GENOTYPE_PATH}")
         world.update_robot_xml(ROBOT_XML_PATH)
         genotype = np.load(GENOTYPE_PATH, allow_pickle=True)
-        genotype = remap_challenge1_weights(genotype)  # Optional: remap if trained on Challenge 1
+        # genotype = remap_challenge1_weights(genotype)  # Optional: remap if trained on Challenge 1
         world.controller.geno2pheno(genotype[:world.n_weights])
         print(f"Robot  : {ROBOT_XML_PATH}")
         print(f"Geno   : {GENOTYPE_PATH}  shape={genotype.shape}")

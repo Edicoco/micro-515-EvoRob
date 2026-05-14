@@ -100,13 +100,16 @@ class EvalIceEnv(MujocoEnv, utils.EzPickle):
         terminated = self._is_terminated()
         if self.vel_count > 50 :
             terminated = True
+
+        if self._torso_upside_down():
+            terminated = True
         
         reward = healthy_reward + x_velocity * 3 - 0.6 * y_velocity - ctrl_cost - cfrc_cost - 0.6 * y_divergence
         if terminated:
-            reward = -10.0
+            reward = -15.0
 
         info = {
-            "healthy_reward": -10.0 if terminated else healthy_reward,
+            "healthy_reward": -15.0 if terminated else healthy_reward,
             "x_position": float(x_after),
             "ctrl_cost": ctrl_cost,
             "cfrc_cost": cfrc_cost,
@@ -136,6 +139,10 @@ class EvalIceEnv(MujocoEnv, utils.EzPickle):
         qvel = self.init_qvel + noise ** 2 * self.np_random.standard_normal(self.model.nv)
         self.set_state(qpos, qvel)
         return self._get_obs()
+    
+    def _torso_upside_down(self) -> bool:
+        R = self.data.body(1).xmat.reshape(3, 3)
+        return float(R[2, 2]) < 0.0
 
     def _get_reset_info(self):
         return {"x_position": float(self.data.qpos[0])}
