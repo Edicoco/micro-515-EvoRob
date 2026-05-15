@@ -19,4 +19,4 @@ python train_flat_specialist.py \
     --n_repeats 4    \
     --n_steps   500 \
     --out_dir   results/flat_specialist_cmaes/ \
-    --warm_start_dir results/Paul_best_flat
+    --warm_start_dir results/Paul_best_flat/

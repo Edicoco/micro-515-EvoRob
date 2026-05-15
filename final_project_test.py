@@ -82,7 +82,7 @@ CHECKPOINT_DIR = None # "results/final_project"
 
 # Option B: provide the robot XML and genotype as separate files
 ROBOT_XML_PATH = "results/best_flat/x_best_body.xml"   # e.g. "/abs/path/to/Robot.xml"
-GENOTYPE_PATH  = "results/ice_specialist_cmaes/1600/x_best.npy"   # e.g. "/abs/path/to/x_best.npy"
+GENOTYPE_PATH  = "results/Paul_best_flat/x_best.npy"   # e.g. "/abs/path/to/x_best.npy"
 
 # GENOTYPE_PATH  = "results/ice_specialist_cmaes/1200/x_best.npy"   # e.g. "/abs/path/to/x_best.npy"
 # GENOTYPE_PATH  = "results/ice_specialist_cmaes/1820/x_best.npy"   # e.g. "/abs/path/to/x_best.npy"
