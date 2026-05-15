@@ -116,7 +116,7 @@ def _load_best_flat_body() -> np.ndarray:
 def _load_warm_start(warm_start_dir: str | None) -> np.ndarray | None:
     if warm_start_dir is None:
         return None
-    ctrl_path = join(warm_start_dir)
+    ctrl_path = join(warm_start_dir, "x_best.npy")
     if not os.path.isfile(ctrl_path):
         print(f"  warm_start: x_best.npy not found in {warm_start_dir}, starting random.")
         return None
@@ -278,7 +278,7 @@ if __name__ == "__main__":
     parser.add_argument("--n_repeats",      type=int,   default=N_REPEATS)
     parser.add_argument("--n_steps",        type=int,   default=N_STEPS)
     parser.add_argument("--out_dir",        type=str,   default=join(ROOT_DIR, "results", "hill_specialist_cmaes"))
-    parser.add_argument("--warm_start_dir", type=str,   default=join(ROOT_DIR, "results/Paul_best_flat"),
+    parser.add_argument("--warm_start_dir", type=str,   default=join(ROOT_DIR, "results_git/Paul_best_flat/"),
                         help="Directory with x_best.npy to warm-start CMA-ES")
     args = parser.parse_args()
     main(
