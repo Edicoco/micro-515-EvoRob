@@ -77,11 +77,12 @@ class EvalHillEnv(MujocoEnv, utils.EzPickle):
         x_position = float(xyz_after[0])
 
         y_velocity = float(xyz_velocity[1])
+        y_velocity = abs(y_velocity)  # penalize both uphill and downhill velocity
         y_position = float(xyz_after[1])
 
         y_offset = abs(y_position - self.initial_y)
 
-        y_offset_penalty = 2 * y_offset + 0.5 * y_velocity
+        y_offset_penalty = 2.3 * y_offset + 0.5 * y_velocity
 
         healthy_reward = 1.0
         ctrl_cost = float(np.sum(action ** 2) * self._ctrl_cost_weight)
