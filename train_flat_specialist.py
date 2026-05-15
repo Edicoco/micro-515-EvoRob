@@ -49,10 +49,10 @@ N_BODY_PARAMS = 0
 N_PARAMS      = N_WEIGHTS
 
 POP_SIZE      = 512
-SIGMA0        = 0.01
+SIGMA0        = 0.03
 BOUNDS        = (-10, 10)
 N_GEN         = 2000
-N_REPEATS     = 4
+N_REPEATS     = 5
 N_STEPS       = 100
 CKPT_INTERVAL = 10
 RANDOM_SEED   = 42
@@ -72,7 +72,7 @@ class FlatSpecialistWorld(FinalWorld):
                             n_repeats: int = N_REPEATS,
                             n_steps: int = N_STEPS) -> float:
         self.update_robot_xml(genotype)
-        return self._run_env("IceEnv-v0", self.ice_world_file, n_repeats, n_steps)
+        return self._run_env("HillEnv-v0", self.hill_world_file, n_repeats, n_steps)
 
 
 # ---------------------------------------------------------------------------
@@ -116,7 +116,7 @@ def _load_best_flat_body() -> np.ndarray:
 def _load_warm_start(warm_start_dir: str | None) -> np.ndarray | None:
     if warm_start_dir is None:
         return None
-    ctrl_path = join(warm_start_dir, "best_ice_controller.npy")
+    ctrl_path = join(warm_start_dir, "x_best.npy")
     if not os.path.isfile(ctrl_path):
         print(f"  warm_start: x_best.npy not found in {warm_start_dir}, starting random.")
         return None
@@ -277,8 +277,8 @@ if __name__ == "__main__":
     parser.add_argument("--pop_size",       type=int,   default=POP_SIZE)
     parser.add_argument("--n_repeats",      type=int,   default=N_REPEATS)
     parser.add_argument("--n_steps",        type=int,   default=N_STEPS)
-    parser.add_argument("--out_dir",        type=str,   default=join(ROOT_DIR, "results", "ice_specialist_cmaes"))
-    parser.add_argument("--warm_start_dir", type=str,   default=join(ROOT_DIR, "results/20260324_085356_nsga_ckpts"),
+    parser.add_argument("--out_dir",        type=str,   default=join(ROOT_DIR, "results", "hill_specialist_cmaes"))
+    parser.add_argument("--warm_start_dir", type=str,   default=join(ROOT_DIR, "results/Paul_best_flat"),
                         help="Directory with x_best.npy to warm-start CMA-ES")
     args = parser.parse_args()
     main(

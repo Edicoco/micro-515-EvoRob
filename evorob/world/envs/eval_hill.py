@@ -28,7 +28,7 @@ class EvalHillEnv(MujocoEnv, utils.EzPickle):
         robot_path: str,
         frame_skip: int = 5,
         default_camera_config: dict = DEFAULT_CAMERA_CONFIG,
-        ctrl_cost_weight: float = 0.5,
+        ctrl_cost_weight: float = 0.2,
         cfrc_cost_weight: float = 5e-4,
         reset_noise_scale: float = 0.1,
         **kwargs,
@@ -64,6 +64,9 @@ class EvalHillEnv(MujocoEnv, utils.EzPickle):
             low=-np.inf, high=np.inf, shape=(obs_size,), dtype=np.float64
         )
 
+        self.initial_y = self.data.body(1).xpos[1]
+
+
     def step(self, action):
         xyz_before = self.data.body(1).xpos[:3].copy()
         self.do_simulation(action, self.frame_skip)
@@ -73,12 +76,21 @@ class EvalHillEnv(MujocoEnv, utils.EzPickle):
         x_velocity = float(xyz_velocity[0])
         x_position = float(xyz_after[0])
 
+        y_velocity = float(xyz_velocity[1])
+        y_position = float(xyz_after[1])
+
+        y_offset = abs(y_position - self.initial_y)
+
+        y_offset_penalty = 2 * y_offset + 0.5 * y_velocity
+
         healthy_reward = 1.0
         ctrl_cost = float(np.sum(action ** 2) * self._ctrl_cost_weight)
         cfrc_cost = float(np.sum(self.data.cfrc_ext[1:] ** 2) * self._cfrc_cost_weight)
 
         terminated = self._is_terminated(xyz_velocity)
-        reward = healthy_reward + x_position - ctrl_cost - cfrc_cost
+        if terminated:
+            healthy_reward = -10.0
+        reward = healthy_reward + x_position - ctrl_cost - cfrc_cost - y_offset_penalty
 
         info = {
             "healthy_reward": -10.0 if terminated else healthy_reward,

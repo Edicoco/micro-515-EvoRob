@@ -82,11 +82,15 @@ CHECKPOINT_DIR = None # "results/final_project"
 
 # Option B: provide the robot XML and genotype as separate files
 ROBOT_XML_PATH = "results/best_flat/x_best_body.xml"   # e.g. "/abs/path/to/Robot.xml"
-GENOTYPE_PATH  = "results/ice_specialist_cmaes/100/x_best.npy"   # e.g. "/abs/path/to/x_best.npy"
+GENOTYPE_PATH  = "results/ice_specialist_cmaes/1600/x_best.npy"   # e.g. "/abs/path/to/x_best.npy"
+
+# GENOTYPE_PATH  = "results/ice_specialist_cmaes/1200/x_best.npy"   # e.g. "/abs/path/to/x_best.npy"
+# GENOTYPE_PATH  = "results/ice_specialist_cmaes/1820/x_best.npy"   # e.g. "/abs/path/to/x_best.npy"
+
 
 # --- Output ---
 OUTPUT_DIR = "evaluation_output"
-N_EPISODES = 10     # increase to 256 for the final leaderboard submission
+N_EPISODES = 60     # increase to 256 for the final leaderboard submission
 SEED       = 0      # fixed — do NOT change for a fair comparison
 MAX_STEPS  = 1000   # fixed — do NOT change
 

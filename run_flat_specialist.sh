@@ -15,8 +15,8 @@ mkdir -p logs
 
 python train_flat_specialist.py \
     --n_gen     2000 \
-    --pop_size  256  \
-    --n_repeats 3    \
+    --pop_size  128  \
+    --n_repeats 4    \
     --n_steps   500 \
     --out_dir   results/flat_specialist_cmaes/ \
-    --warm_start_dir results/20260324_085356_nsga_ckpts/
+    --warm_start_dir results/Paul_best_flat
