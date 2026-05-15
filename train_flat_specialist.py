@@ -116,7 +116,7 @@ def _load_best_flat_body() -> np.ndarray:
 def _load_warm_start(warm_start_dir: str | None) -> np.ndarray | None:
     if warm_start_dir is None:
         return None
-    ctrl_path = join(warm_start_dir, "x_best.npy")
+    ctrl_path = join(warm_start_dir)
     if not os.path.isfile(ctrl_path):
         print(f"  warm_start: x_best.npy not found in {warm_start_dir}, starting random.")
         return None
