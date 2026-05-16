@@ -48,12 +48,12 @@ N_WEIGHTS     = 560
 N_BODY_PARAMS = 0
 N_PARAMS      = N_WEIGHTS
 
-POP_SIZE      = 512
-SIGMA0        = 0.03
+POP_SIZE      = 256
+SIGMA0        = 0.01
 BOUNDS        = (-10, 10)
-N_GEN         = 2000
-N_REPEATS     = 5
-N_STEPS       = 100
+N_GEN         = 500
+N_REPEATS     = 4
+N_STEPS       = 500
 CKPT_INTERVAL = 10
 RANDOM_SEED   = 42
 
@@ -71,7 +71,11 @@ class FlatSpecialistWorld(FinalWorld):
     def evaluate_individual(self, genotype: np.ndarray,
                             n_repeats: int = N_REPEATS,
                             n_steps: int = N_STEPS) -> float:
-        self.update_robot_xml(genotype)
+        
+        body = _load_best_flat_body()
+        genome_full = np.concatenate([genotype[:N_WEIGHTS], body])
+        self.update_robot_xml(genome_full)
+
         return self._run_env("HillEnv-v0", self.hill_world_file, n_repeats, n_steps)
 
 
@@ -106,10 +110,12 @@ def _load_best_flat_body() -> np.ndarray:
     Standard ant:  leg xy=0.20m  → param=0.2828 → raw=-0.269
                    ankle xy=0.40m → param=0.5657 → raw=+0.863
     """
-    leg   = (0.20 * np.sqrt(2) - 0.1) * 4 - 1   # ≈ -0.269
-    ankle = (0.40 * np.sqrt(2) - 0.1) * 4 - 1   # ≈ +0.863
+    leg   = (0.25 * np.sqrt(2) - 0.1) * 4 - 1  
+    ankle = (0.30 * np.sqrt(2) - 0.1) * 4 - 1   
+
     body = np.array([leg, ankle, leg, ankle])
-    print(f"  body init center: standard ant XML  [leg={leg:.3f}, ankle={ankle:.3f}]")
+    body = np.array([0.3, 0.36, 0.3, 0.35])
+    # print(f"  body init center: standard ant XML  [leg={leg:.3f}, ankle={ankle:.3f}]")
     return body
 
 
@@ -126,6 +132,39 @@ def _load_warm_start(warm_start_dir: str | None) -> np.ndarray | None:
     # x0 = remap_challenge1_weights(x0)
     print(f"  warm_start: loaded from {warm_start_dir}  (Challenge-1 joint order remapped)  shape={x0.shape}")
     return x0
+
+
+# ---------------------------------------------------------------------------
+# Video helper (Mac only)
+# ---------------------------------------------------------------------------
+
+def _save_video(world: FlatSpecialistWorld, genome: np.ndarray,
+                out_path: str, n_steps: int) -> None:
+    try:
+        import imageio
+        # Append standard ant body params so geno2pheno uses the correct morphology
+        # instead of the neutral fallback (0.35 m per segment).
+        body = _load_best_flat_body()
+        genome_full = np.concatenate([genome[:N_WEIGHTS], body])
+        world.update_robot_xml(genome_full)
+        env = gym.make("HillEnv-v0", robot_path=world.hill_world_file,
+                       render_mode="rgb_array", max_episode_steps=n_steps)
+        world.controller.reset_controller(batch_size=1)
+        obs, _ = env.reset(seed=RANDOM_SEED)
+        frames = []
+        for _ in range(n_steps):
+            frames.append(env.render())
+            action = world.controller.get_action(obs)
+            if action.ndim > 1:
+                action = action.squeeze(0)
+            obs, _, terminated, truncated, _ = env.step(action)
+            if terminated or truncated:
+                break
+        env.close()
+        imageio.mimwrite(out_path, frames, fps=20)
+        print(f"  Video saved: {out_path}")
+    except Exception as exc:
+        print(f"  Video skipped: {exc}")
 
 
 # ---------------------------------------------------------------------------
@@ -247,6 +286,9 @@ def main(n_gen: int, pop_size: int, n_repeats: int, n_steps: int,
                 if best_xml:
                     with open(join(ckpt, "Robot.xml"), "w") as fh:
                         fh.write(best_xml)
+                if platform.system() == "Darwin":
+                    _save_video(world, best_genome,
+                                join(out_dir, f"video_gen_{gen:04d}.mp4"), n_steps)
 
             if es.es.sigma < SIGMA_RESTART and best_genome is not None:
                 print(f"[Gen {gen+1}] sigma={es.es.sigma:.4f} < {SIGMA_RESTART} → convergé, arrêt.")
@@ -278,7 +320,7 @@ if __name__ == "__main__":
     parser.add_argument("--n_repeats",      type=int,   default=N_REPEATS)
     parser.add_argument("--n_steps",        type=int,   default=N_STEPS)
     parser.add_argument("--out_dir",        type=str,   default=join(ROOT_DIR, "results", "hill_specialist_cmaes"))
-    parser.add_argument("--warm_start_dir", type=str,   default=join(ROOT_DIR, "results_git/Paul_best_flat/"),
+    parser.add_argument("--warm_start_dir", type=str,   default=join(ROOT_DIR, "results/hill_specialist_cmaes/1990/"),
                         help="Directory with x_best.npy to warm-start CMA-ES")
     args = parser.parse_args()
     main(

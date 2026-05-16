@@ -65,6 +65,7 @@ class EvalHillEnv(MujocoEnv, utils.EzPickle):
         )
 
         self.initial_y = self.data.body(1).xpos[1]
+        self._stuck_count = 0
 
 
     def step(self, action):
@@ -72,9 +73,17 @@ class EvalHillEnv(MujocoEnv, utils.EzPickle):
         self.do_simulation(action, self.frame_skip)
         xyz_after = self.data.body(1).xpos[:3].copy()
 
+
         xyz_velocity = (xyz_after - xyz_before) / self.dt
         x_velocity = float(xyz_velocity[0])
         x_position = float(xyz_after[0])
+
+        if x_velocity < 0.1:
+            sel.f._stuck_count += 1
+        else:
+                self._stuck_count = 0
+        if self._stuck_count > 50:
+            terminated = True
 
         y_velocity = float(xyz_velocity[1])
         y_velocity = abs(y_velocity)  # penalize both uphill and downhill velocity
@@ -82,7 +91,7 @@ class EvalHillEnv(MujocoEnv, utils.EzPickle):
 
         y_offset = abs(y_position - self.initial_y)
 
-        y_offset_penalty = 2.3 * y_offset + 0.5 * y_velocity
+        y_offset_penalty = 2 * y_offset + 0.5 * y_velocity
 
         healthy_reward = 1.0
         ctrl_cost = float(np.sum(action ** 2) * self._ctrl_cost_weight)
@@ -90,11 +99,11 @@ class EvalHillEnv(MujocoEnv, utils.EzPickle):
 
         terminated = self._is_terminated(xyz_velocity)
         if terminated:
-            healthy_reward = -10.0
+            healthy_reward = -15.0
         reward = healthy_reward + x_position - ctrl_cost - cfrc_cost - y_offset_penalty
 
         info = {
-            "healthy_reward": -10.0 if terminated else healthy_reward,
+            "healthy_reward": -15.0 if terminated else healthy_reward,
             "x_position": x_position,
             "ctrl_cost": ctrl_cost,
             "cfrc_cost": cfrc_cost,
