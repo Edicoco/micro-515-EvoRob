@@ -48,12 +48,12 @@ N_WEIGHTS     = 560
 N_BODY_PARAMS = 0
 N_PARAMS      = N_WEIGHTS
 
-POP_SIZE      = 256
+POP_SIZE      = 128
 SIGMA0        = 0.01
 BOUNDS        = (-10, 10)
 N_GEN         = 500
 N_REPEATS     = 4
-N_STEPS       = 500
+N_STEPS       = 1500
 CKPT_INTERVAL = 10
 RANDOM_SEED   = 42
 
@@ -114,7 +114,7 @@ def _load_best_flat_body() -> np.ndarray:
     ankle = (0.30 * np.sqrt(2) - 0.1) * 4 - 1   
 
     body = np.array([leg, ankle, leg, ankle])
-    body = np.array([0.3, 0.36, 0.3, 0.35])
+    body = np.array([0.05, 0.9, 0.05, 0.9])
     # print(f"  body init center: standard ant XML  [leg={leg:.3f}, ankle={ankle:.3f}]")
     return body
 
@@ -319,8 +319,8 @@ if __name__ == "__main__":
     parser.add_argument("--pop_size",       type=int,   default=POP_SIZE)
     parser.add_argument("--n_repeats",      type=int,   default=N_REPEATS)
     parser.add_argument("--n_steps",        type=int,   default=N_STEPS)
-    parser.add_argument("--out_dir",        type=str,   default=join(ROOT_DIR, "results", "hill_specialist_cmaes"))
-    parser.add_argument("--warm_start_dir", type=str,   default=join(ROOT_DIR, "results/hill_specialist_cmaes/1990/"),
+    parser.add_argument("--out_dir",        type=str,   default=join(ROOT_DIR, "results", "flat_specialist_cmaes"))
+    parser.add_argument("--warm_start_dir", type=str,   default=join(ROOT_DIR, "results_git/Paul_best_flat/"),
                         help="Directory with x_best.npy to warm-start CMA-ES")
     args = parser.parse_args()
     main(
