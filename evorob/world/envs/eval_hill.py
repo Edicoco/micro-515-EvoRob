@@ -28,8 +28,8 @@ class EvalHillEnv(MujocoEnv, utils.EzPickle):
         robot_path: str,
         frame_skip: int = 5,
         default_camera_config: dict = DEFAULT_CAMERA_CONFIG,
-        ctrl_cost_weight: float = 0.2,
-        cfrc_cost_weight: float = 5e-4,
+        ctrl_cost_weight: float = 0.05,
+        cfrc_cost_weight: float = 1e-4,
         reset_noise_scale: float = 0.1,
         **kwargs,
     ):
@@ -100,6 +100,7 @@ class EvalHillEnv(MujocoEnv, utils.EzPickle):
             "ctrl_cost": ctrl_cost,
             "cfrc_cost": cfrc_cost,
             "x_velocity": x_velocity,
+            "torso_in_contact": self.is_torso_in_contact(),
         }
 
         if self.render_mode == "human":
@@ -112,7 +113,7 @@ class EvalHillEnv(MujocoEnv, utils.EzPickle):
             return True
         if self._torso_upside_down():
             return True
-        if np.linalg.norm(xyz_velocity) < 5e-2:
+        if np.linalg.norm(np.float64(xyz_velocity[0])) < 5e-2 or self.is_torso_in_contact():
             self._stuck_count += 1
             if self._stuck_count > 10 / self.dt:
                 return True
@@ -137,3 +138,10 @@ class EvalHillEnv(MujocoEnv, utils.EzPickle):
 
     def _get_reset_info(self):
         return {"x_position": float(self.data.qpos[0])}
+    
+    def is_torso_in_contact(self) -> bool:
+        torso_geom_id = self.model.body_geomadr[self.model.body("Base").id]
+        for contact in self.data.contact[: self.data.ncon]:
+            if contact.geom1 == torso_geom_id or contact.geom2 == torso_geom_id:
+                return True
+        return False

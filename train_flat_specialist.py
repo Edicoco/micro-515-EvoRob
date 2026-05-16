@@ -19,9 +19,10 @@ import copy
 import os
 import platform
 import shutil
+import threading
 import time
 import xml.etree.ElementTree as xml
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from os.path import join
 from tempfile import TemporaryDirectory
 
@@ -49,17 +50,19 @@ N_BODY_PARAMS = 0
 N_PARAMS      = N_WEIGHTS
 
 POP_SIZE      = 128
-SIGMA0        = 0.01
+SIGMA0        = 0.03
 BOUNDS        = (-10, 10)
-N_GEN         = 500
-N_REPEATS     = 4
-N_STEPS       = 1500
+N_GEN         = 1500
+N_REPEATS     = 3
+N_STEPS       = 1000
 CKPT_INTERVAL = 10
 RANDOM_SEED   = 42
 
 SIGMA_RESTART  = 0.00   # restart CMA-ES when sigma drops below this
 
-N_WORKERS = 0 if platform.system() == "Darwin" else max(1, (os.cpu_count() or 1) // (N_REPEATS + 1))
+IS_MAC    = platform.system() == "Darwin"
+_cpus     = os.cpu_count() or 1
+N_WORKERS = max(1, _cpus // max(1, N_REPEATS)) if IS_MAC else max(1, _cpus // (N_REPEATS + 1))
 
 # ---------------------------------------------------------------------------
 # Evaluation world (flat only)
@@ -84,15 +87,22 @@ class FlatSpecialistWorld(FinalWorld):
 # ---------------------------------------------------------------------------
 
 _world_worker: FlatSpecialistWorld | None = None
+_thread_local = threading.local()
 
 def _init_worker():
     global _world_worker
     _world_worker = FlatSpecialistWorld()
 
+def _get_thread_world() -> FlatSpecialistWorld:
+    if not hasattr(_thread_local, "world"):
+        _thread_local.world = FlatSpecialistWorld()
+    return _thread_local.world
+
 def _eval_worker(args):
     genotype, n_repeats, n_steps = args
-    fitness = _world_worker.evaluate_individual(genotype, n_repeats=n_repeats, n_steps=n_steps)
-    with open(join(_world_worker.temp_dir.name, "Robot.xml")) as fh:
+    world = _get_thread_world() if IS_MAC else _world_worker
+    fitness = world.evaluate_individual(genotype, n_repeats=n_repeats, n_steps=n_steps)
+    with open(join(world.temp_dir.name, "Robot.xml")) as fh:
         robot_xml = fh.read()
     return fitness, robot_xml
 
@@ -194,7 +204,7 @@ def main(n_gen: int, pop_size: int, n_repeats: int, n_steps: int,
     )
     es.es.opts.set({"seed": RANDOM_SEED, "verbose": -9, "tolx": 1e-6, "tolfun": 1e-6, "tolstagnation": 2000})
 
-    mode_str = f"{N_WORKERS} workers" if N_WORKERS > 0 else "sequential (macOS)"
+    mode_str = f"{N_WORKERS} threads (macOS)" if IS_MAC else f"{N_WORKERS} processes (Linux)"
     print(f"\nCMA-ES flat specialist")
     print(f"  pop={pop_size}  sigma0={SIGMA0}  n_gen={n_gen}")
     print(f"  n_repeats={n_repeats}  n_steps={n_steps}")
@@ -207,10 +217,10 @@ def main(n_gen: int, pop_size: int, n_repeats: int, n_steps: int,
     n_restarts   = 0
     _best_xml_stage = join(out_dir, "_best_robot.xml")
 
-    pool_ctx = (
-        ProcessPoolExecutor(max_workers=N_WORKERS, initializer=_init_worker)
-        if N_WORKERS > 0 else None
-    )
+    if IS_MAC:
+        pool_ctx = ThreadPoolExecutor(max_workers=N_WORKERS)
+    else:
+        pool_ctx = ProcessPoolExecutor(max_workers=N_WORKERS, initializer=_init_worker)
 
     t_start = time.time()
 
@@ -286,10 +296,11 @@ def main(n_gen: int, pop_size: int, n_repeats: int, n_steps: int,
                 if best_xml:
                     with open(join(ckpt, "Robot.xml"), "w") as fh:
                         fh.write(best_xml)
+                
                 if platform.system() == "Darwin":
                     _save_video(world, best_genome,
                                 join(out_dir, f"video_gen_{gen:04d}.mp4"), n_steps)
-
+                
             if es.es.sigma < SIGMA_RESTART and best_genome is not None:
                 print(f"[Gen {gen+1}] sigma={es.es.sigma:.4f} < {SIGMA_RESTART} → convergé, arrêt.")
                 break
@@ -319,8 +330,8 @@ if __name__ == "__main__":
     parser.add_argument("--pop_size",       type=int,   default=POP_SIZE)
     parser.add_argument("--n_repeats",      type=int,   default=N_REPEATS)
     parser.add_argument("--n_steps",        type=int,   default=N_STEPS)
-    parser.add_argument("--out_dir",        type=str,   default=join(ROOT_DIR, "results", "flat_specialist_cmaes"))
-    parser.add_argument("--warm_start_dir", type=str,   default=join(ROOT_DIR, "results_git/Paul_best_flat/"),
+    parser.add_argument("--out_dir",        type=str,   default=join(ROOT_DIR, "results", "hill_specialist_cmaes_long_1"))
+    parser.add_argument("--warm_start_dir", type=str,   default=join(ROOT_DIR, "results", "flat_specialist_cmaes_long/final"),
                         help="Directory with x_best.npy to warm-start CMA-ES")
     args = parser.parse_args()
     main(
