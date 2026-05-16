@@ -65,7 +65,6 @@ class EvalHillEnv(MujocoEnv, utils.EzPickle):
         )
 
         self.initial_y = self.data.body(1).xpos[1]
-        self._stuck_count = 0
 
 
     def step(self, action):
@@ -77,13 +76,6 @@ class EvalHillEnv(MujocoEnv, utils.EzPickle):
         xyz_velocity = (xyz_after - xyz_before) / self.dt
         x_velocity = float(xyz_velocity[0])
         x_position = float(xyz_after[0])
-
-        if x_velocity < 0.1:
-            sel.f._stuck_count += 1
-        else:
-                self._stuck_count = 0
-        if self._stuck_count > 50:
-            terminated = True
 
         y_velocity = float(xyz_velocity[1])
         y_velocity = abs(y_velocity)  # penalize both uphill and downhill velocity
@@ -120,7 +112,7 @@ class EvalHillEnv(MujocoEnv, utils.EzPickle):
             return True
         if self._torso_upside_down():
             return True
-        if np.linalg.norm(xyz_velocity) < 1e-2:
+        if np.linalg.norm(xyz_velocity) < 5e-2:
             self._stuck_count += 1
             if self._stuck_count > 10 / self.dt:
                 return True
