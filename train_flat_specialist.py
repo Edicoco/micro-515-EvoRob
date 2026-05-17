@@ -49,13 +49,13 @@ N_WEIGHTS     = 560
 N_BODY_PARAMS = 0
 N_PARAMS      = N_WEIGHTS
 
-POP_SIZE      = 12
-SIGMA0        = 0.00004
+POP_SIZE      = 256
+SIGMA0        = 0.03
 BOUNDS        = (-10, 10)
-N_GEN         = 2000
-N_REPEATS     = 4
+N_GEN         = 1000
+N_REPEATS     = 3
 N_STEPS       = 1000
-CKPT_INTERVAL = 1
+CKPT_INTERVAL = 10
 RANDOM_SEED   = 42
 
 SIGMA_RESTART  = 0.00   # restart CMA-ES when sigma drops below this
