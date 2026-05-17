@@ -14,9 +14,9 @@ source .venv/bin/activate
 mkdir -p logs
 
 python train_flat_specialist.py \
-    --n_gen     600 \
-    --pop_size  256  \
-    --n_repeats 3    \
-    --n_steps   1200 \
+    --n_gen     2000 \
+    --pop_size  128  \
+    --n_repeats 4    \
+    --n_steps   1000 \
     --out_dir   results/flat_specialist_cmaes/ \
     --warm_start_dir results_git/Paul_best_flat/ \

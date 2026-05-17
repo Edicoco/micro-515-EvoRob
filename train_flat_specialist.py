@@ -50,10 +50,10 @@ N_BODY_PARAMS = 0
 N_PARAMS      = N_WEIGHTS
 
 POP_SIZE      = 128
-SIGMA0        = 0.03
+SIGMA0        = 0.04
 BOUNDS        = (-10, 10)
-N_GEN         = 1500
-N_REPEATS     = 3
+N_GEN         = 2000
+N_REPEATS     = 4
 N_STEPS       = 1000
 CKPT_INTERVAL = 10
 RANDOM_SEED   = 42
@@ -331,7 +331,7 @@ if __name__ == "__main__":
     parser.add_argument("--n_repeats",      type=int,   default=N_REPEATS)
     parser.add_argument("--n_steps",        type=int,   default=N_STEPS)
     parser.add_argument("--out_dir",        type=str,   default=join(ROOT_DIR, "results", "hill_specialist_cmaes_long_1"))
-    parser.add_argument("--warm_start_dir", type=str,   default=join(ROOT_DIR, "results", "flat_specialist_cmaes_long/final"),
+    parser.add_argument("--warm_start_dir", type=str,   default=join(ROOT_DIR, "results/hill_specialist_cmaes_long_1/final/"),
                         help="Directory with x_best.npy to warm-start CMA-ES")
     args = parser.parse_args()
     main(
