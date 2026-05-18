@@ -13,4 +13,4 @@
 source .venv/bin/activate
 mkdir -p logs
 
-python run_cluster.py
+python final_project_train.py

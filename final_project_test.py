@@ -81,8 +81,8 @@ MY_CONTROLLER = NeuralNetworkController(input_size=27, output_size=8, hidden_siz
 CHECKPOINT_DIR = None # "results/final_project"
 
 # Option B: provide the robot XML and genotype as separate files
-ROBOT_XML_PATH = "results/ice_specialist_cmaes/_best_robot.xml"   # e.g. "/abs/path/to/Robot.xml"
-GENOTYPE_PATH  = "results/hill_specialist_cmaes/1990/x_best.npy"   # e.g. "/abs/path/to/x_best.npy"
+ROBOT_XML_PATH = "results/hill_specialist_cmaes_long_2/20/Robot.xml"   # e.g. "/abs/path/to/Robot.xml"
+GENOTYPE_PATH  = "results/hill_specialist_cmaes_long_2/600/x_best.npy"   # e.g. "/abs/path/to/x_best.npy"
 
 # GENOTYPE_PATH  = "results/ice_specialist_cmaes/1200/x_best.npy"   # e.g. "/abs/path/to/x_best.npy"
 # GENOTYPE_PATH  = "results/ice_specialist_cmaes/1820/x_best.npy"   # e.g. "/abs/path/to/x_best.npy"
@@ -90,7 +90,7 @@ GENOTYPE_PATH  = "results/hill_specialist_cmaes/1990/x_best.npy"   # e.g. "/abs/
 
 # --- Output ---
 OUTPUT_DIR = "evaluation_output"
-N_EPISODES = 60     # increase to 256 for the final leaderboard submission
+N_EPISODES = 10     # increase to 256 for the final leaderboard submission
 SEED       = 0      # fixed — do NOT change for a fair comparison
 MAX_STEPS  = 3000   # fixed — do NOT change
 

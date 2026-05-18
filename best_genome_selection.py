@@ -23,9 +23,9 @@ from evorob.utils.filesys import get_project_root
 ROOT_DIR  = get_project_root()
 _RESULTS  = join(ROOT_DIR, "results")
 
-FLAT_CKPT_DIR = join(_RESULTS, "best_flat")
-HILL_CKPT_DIR = join(_RESULTS, "best_hill")
-ICE_CKPT_DIR  = join(_RESULTS, "20260324_085356_nsga_ckpts")
+FLAT_CKPT_DIR = join(_RESULTS, "flat_specialist_cmaes_long_1")
+HILL_CKPT_DIR = join(_RESULTS, "hill_specialist_cmaes_long_2")
+ICE_CKPT_DIR  = join(_RESULTS, "ice_specialist_cmaes_long")
 
 
 # ---------------------------------------------------------------------------
@@ -99,8 +99,8 @@ def build_diverse_initial_population(
     ice_top_k: np.ndarray | None = None,
     hill_top_k: np.ndarray | None = None,
     n_per_genome: int = 32,
-    ctrl_noise_std: float = 0.1,
-    body_noise_std: float = 0.1,
+    ctrl_noise_std: float = 0.05,
+    body_noise_std: float = 0.05,
     random_seed: int = 42,
 ) -> np.ndarray:
     """Build initial population with k diverse specialists per terrain.
@@ -136,7 +136,7 @@ def build_diverse_initial_population(
     parts.append(np.clip(rand, bounds[0], bounds[1]))
 
     # --- Terrain specialists ---
-    neutral_body = np.zeros(n_body_params)
+    neutral_body = np.array([0.05, 0.9, 0.05, 0.9])
     terrain_labels = ["flat", "ice", "hill"]
     terrain_arrays = [flat_top_k, ice_top_k, hill_top_k]
 
@@ -153,7 +153,7 @@ def build_diverse_initial_population(
             # (n_per_genome - 1) noisy variants
             for _ in range(n_per_genome - 1):
                 noisy_ctrl = ctrl + rng.normal(0, ctrl_noise_std, n_weights)
-                noisy_body = rng.normal(0, body_noise_std, n_body_params)
+                noisy_body = neutral_body + rng.normal(0, body_noise_std, n_body_params)
                 noisy = np.clip(np.concatenate([noisy_ctrl, noisy_body]), bounds[0], bounds[1])
                 genome_group.append(noisy)
 
@@ -172,7 +172,7 @@ def build_diverse_initial_population(
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    K = 2
+    K = 4
 
     print(f"Loading top-{K} specialists per terrain from last checkpoint...")
 

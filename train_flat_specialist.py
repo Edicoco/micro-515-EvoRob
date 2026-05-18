@@ -49,12 +49,12 @@ N_WEIGHTS     = 560
 N_BODY_PARAMS = 0
 N_PARAMS      = N_WEIGHTS
 
-POP_SIZE      = 256
-SIGMA0        = 0.03
+POP_SIZE      = 64
+SIGMA0        = 0.01
 BOUNDS        = (-10, 10)
-N_GEN         = 1000
+N_GEN         = 11
 N_REPEATS     = 3
-N_STEPS       = 1000
+N_STEPS       = 500
 CKPT_INTERVAL = 10
 RANDOM_SEED   = 42
 
@@ -79,7 +79,7 @@ class FlatSpecialistWorld(FinalWorld):
         genome_full = np.concatenate([genotype[:N_WEIGHTS], body])
         self.update_robot_xml(genome_full)
 
-        return self._run_env("HillEnv-v0", self.hill_world_file, n_repeats, n_steps)
+        return self._run_env("FlatEnv-v0", self.flat_world_file, n_repeats, n_steps)
 
 
 # ---------------------------------------------------------------------------
@@ -157,7 +157,7 @@ def _save_video(world: FlatSpecialistWorld, genome: np.ndarray,
         body = _load_best_flat_body()
         genome_full = np.concatenate([genome[:N_WEIGHTS], body])
         world.update_robot_xml(genome_full)
-        env = gym.make("HillEnv-v0", robot_path=world.hill_world_file,
+        env = gym.make("FlatEnv-v0", robot_path=world.flat_world_file,
                        render_mode="rgb_array", max_episode_steps=n_steps)
         world.controller.reset_controller(batch_size=1)
         obs, _ = env.reset(seed=RANDOM_SEED)
@@ -296,11 +296,11 @@ def main(n_gen: int, pop_size: int, n_repeats: int, n_steps: int,
                 if best_xml:
                     with open(join(ckpt, "Robot.xml"), "w") as fh:
                         fh.write(best_xml)
-                
+                """
                 if platform.system() == "Darwin":
                     _save_video(world, best_genome,
                                 join(out_dir, f"video_gen_{gen:04d}.mp4"), n_steps)
-                
+                """
             if es.es.sigma < SIGMA_RESTART and best_genome is not None:
                 print(f"[Gen {gen+1}] sigma={es.es.sigma:.4f} < {SIGMA_RESTART} → convergé, arrêt.")
                 break
@@ -330,8 +330,8 @@ if __name__ == "__main__":
     parser.add_argument("--pop_size",       type=int,   default=POP_SIZE)
     parser.add_argument("--n_repeats",      type=int,   default=N_REPEATS)
     parser.add_argument("--n_steps",        type=int,   default=N_STEPS)
-    parser.add_argument("--out_dir",        type=str,   default=join(ROOT_DIR, "results", "hill_specialist_cmaes_long_1"))
-    parser.add_argument("--warm_start_dir", type=str,   default=join(ROOT_DIR, "results/hill_specialist_cmaes_long_2/100/"),
+    parser.add_argument("--out_dir",        type=str,   default=join(ROOT_DIR, "results", "flat_specialist_cmaes_long_1"))
+    parser.add_argument("--warm_start_dir", type=str,   default=join(ROOT_DIR, "results/flat_specialist_cmaes_long/final/"),
                         help="Directory with x_best.npy to warm-start CMA-ES")
     args = parser.parse_args()
     main(
