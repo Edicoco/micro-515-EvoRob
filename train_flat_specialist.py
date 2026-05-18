@@ -49,12 +49,12 @@ N_WEIGHTS     = 560
 N_BODY_PARAMS = 0
 N_PARAMS      = N_WEIGHTS
 
-POP_SIZE      = 64
+POP_SIZE      = 256
 SIGMA0        = 0.01
 BOUNDS        = (-10, 10)
-N_GEN         = 11
+N_GEN         = 500
 N_REPEATS     = 3
-N_STEPS       = 500
+N_STEPS       = 700
 CKPT_INTERVAL = 10
 RANDOM_SEED   = 42
 
@@ -79,7 +79,7 @@ class FlatSpecialistWorld(FinalWorld):
         genome_full = np.concatenate([genotype[:N_WEIGHTS], body])
         self.update_robot_xml(genome_full)
 
-        return self._run_env("FlatEnv-v0", self.flat_world_file, n_repeats, n_steps)
+        return self._run_env("EvalEnv-v0", self.eval_world_file, n_repeats, n_steps)
 
 
 # ---------------------------------------------------------------------------
@@ -157,7 +157,7 @@ def _save_video(world: FlatSpecialistWorld, genome: np.ndarray,
         body = _load_best_flat_body()
         genome_full = np.concatenate([genome[:N_WEIGHTS], body])
         world.update_robot_xml(genome_full)
-        env = gym.make("FlatEnv-v0", robot_path=world.flat_world_file,
+        env = gym.make("EvalEnv-v0", robot_path=world.eval_world_file,
                        render_mode="rgb_array", max_episode_steps=n_steps)
         world.controller.reset_controller(batch_size=1)
         obs, _ = env.reset(seed=RANDOM_SEED)
@@ -331,7 +331,7 @@ if __name__ == "__main__":
     parser.add_argument("--n_repeats",      type=int,   default=N_REPEATS)
     parser.add_argument("--n_steps",        type=int,   default=N_STEPS)
     parser.add_argument("--out_dir",        type=str,   default=join(ROOT_DIR, "results", "flat_specialist_cmaes_long_1"))
-    parser.add_argument("--warm_start_dir", type=str,   default=join(ROOT_DIR, "results/flat_specialist_cmaes_long/final/"),
+    parser.add_argument("--warm_start_dir", type=str,   default=join(ROOT_DIR, "NSGA/run_01/mean2worst/"),
                         help="Directory with x_best.npy to warm-start CMA-ES")
     args = parser.parse_args()
     main(
