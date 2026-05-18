@@ -22,10 +22,11 @@ from evorob.utils.filesys import get_project_root
 
 ROOT_DIR  = get_project_root()
 _RESULTS  = join(ROOT_DIR, "results")
+_WARM_START = join(ROOT_DIR, "warm_start")
 
-FLAT_CKPT_DIR = join(_RESULTS, "flat_specialist_cmaes_long_1")
-HILL_CKPT_DIR = join(_RESULTS, "hill_specialist_cmaes_long_2")
-ICE_CKPT_DIR  = join(_RESULTS, "ice_specialist_cmaes_long")
+FLAT_CKPT_DIR = join(_WARM_START, "flat_specialist_cmaes_long_1")
+HILL_CKPT_DIR = join(_WARM_START, "hill_specialist_cmaes_long_2")
+ICE_CKPT_DIR  = join(_WARM_START, "ice_specialist_cmaes_long")
 
 
 # ---------------------------------------------------------------------------

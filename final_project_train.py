@@ -689,15 +689,15 @@ if __name__ == "__main__":
             flat_top_k=flat_top_k,
             ice_top_k=ice_top_k,
             hill_top_k=hill_top_k,
-            n_per_genome=48,
+            n_per_genome=12,
         )
         del world_tmp
         print(f"Initial population: {initial_pop.shape}")
 
         run_multi_task_evolution(
             num_generations=500,
-            population_size=3*48 + 128,  # 64 random + 64 per top-k genome
-            n_parents=(3*48 + 128)// 2,
+            population_size=3*K*12 + 128,  # 128 random + 36 per top-k genome
+            n_parents=(3*K*12 + 128)// 2,
             n_repeats=3,
             n_steps=1000,
             ckpt_interval=10,
