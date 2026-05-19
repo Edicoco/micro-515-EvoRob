@@ -49,13 +49,13 @@ N_WEIGHTS     = 560
 N_BODY_PARAMS = 0
 N_PARAMS      = N_WEIGHTS
 
-POP_SIZE      = 256
+POP_SIZE      = 2
 SIGMA0        = 0.01
 BOUNDS        = (-10, 10)
 N_GEN         = 500
 N_REPEATS     = 3
-N_STEPS       = 700
-CKPT_INTERVAL = 10
+N_STEPS       = 1500
+CKPT_INTERVAL = 1
 RANDOM_SEED   = 42
 
 SIGMA_RESTART  = 0.00   # restart CMA-ES when sigma drops below this
@@ -296,11 +296,11 @@ def main(n_gen: int, pop_size: int, n_repeats: int, n_steps: int,
                 if best_xml:
                     with open(join(ckpt, "Robot.xml"), "w") as fh:
                         fh.write(best_xml)
-                """
+                
                 if platform.system() == "Darwin":
                     _save_video(world, best_genome,
                                 join(out_dir, f"video_gen_{gen:04d}.mp4"), n_steps)
-                """
+                
             if es.es.sigma < SIGMA_RESTART and best_genome is not None:
                 print(f"[Gen {gen+1}] sigma={es.es.sigma:.4f} < {SIGMA_RESTART} → convergé, arrêt.")
                 break
@@ -331,7 +331,7 @@ if __name__ == "__main__":
     parser.add_argument("--n_repeats",      type=int,   default=N_REPEATS)
     parser.add_argument("--n_steps",        type=int,   default=N_STEPS)
     parser.add_argument("--out_dir",        type=str,   default=join(ROOT_DIR, "results", "flat_specialist_cmaes_long_1"))
-    parser.add_argument("--warm_start_dir", type=str,   default=join(ROOT_DIR, "NSGA/run_01/mean2worst/"),
+    parser.add_argument("--warm_start_dir", type=str,   default=join(ROOT_DIR, "results/flat_specialist_cmaes_long_1/140/"),
                         help="Directory with x_best.npy to warm-start CMA-ES")
     args = parser.parse_args()
     main(

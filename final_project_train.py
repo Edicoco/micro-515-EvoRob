@@ -91,6 +91,8 @@ class FinalWorld(World):
         self.flat_world_file = join(self.temp_dir.name, "WorldFlat.xml")
         self.ice_world_file  = join(self.temp_dir.name, "WorldIce.xml")
         self.hill_world_file = join(self.temp_dir.name, "WorldHill.xml")
+        self.eval_world_file = join(self.temp_dir.name, "eval_terrain.xml")
+
         self.world_file      = self.hill_world_file  # default for visualisation
 
         # Joint geometry — matches the AntRobot topology
@@ -118,6 +120,7 @@ class FinalWorld(World):
         self.sensor_fn = None
 
         self._create_terrain_file("terrain.png")
+        self._create_terrain_file("hilly_hfield.png")
 
     # ------------------------------------------------------------------
     # Genotype → phenotype
@@ -219,9 +222,10 @@ class FinalWorld(World):
         robot.write_xml(self.temp_dir.name)          # → Robot.xml
 
         for template, world_file in [
-            (join(_ASSETS, "flat_world.xml"), self.flat_world_file),
-            (join(_ASSETS, "ice_world.xml"),  self.ice_world_file),
-            (join(_ASSETS, "hill_world.xml"), self.hill_world_file),
+            (join(_ASSETS, "flat_world.xml"),   self.flat_world_file),
+            (join(_ASSETS, "ice_world.xml"),    self.ice_world_file),
+            (join(_ASSETS, "hill_world.xml"),   self.hill_world_file),
+            (join(_ASSETS, "eval_terrain.xml"), self.eval_world_file),
         ]:
             tree = xml.parse(template)
             root = tree.getroot()
@@ -539,7 +543,7 @@ def run_multi_task_evolution(
     n_parents:       int = 50,
     n_repeats:       int = 4,
     n_steps:         int = 500,
-    mutation_prob:   float = 0.3,
+    mutation_prob:   float = 0.5,
     crossover_prob:  float = 0.5,
     bounds:          tuple = (-10, 10),
     ckpt_interval:   int = 10,
@@ -685,23 +689,23 @@ if __name__ == "__main__":
             n_weights=world_tmp.n_weights,
             n_body_params=world_tmp.n_body_params,
             bounds=(-10, 10),
-            n_random=64,
+            n_random=0,
             flat_top_k=flat_top_k,
             ice_top_k=ice_top_k,
             hill_top_k=hill_top_k,
-            n_per_genome=12,
+            n_per_genome=24,
         )
         del world_tmp
         print(f"Initial population: {initial_pop.shape}")
 
         run_multi_task_evolution(
             num_generations=500,
-            population_size=3*K*12 + 64,  # 128 random + 36 per top-k genome
-            n_parents=(3*K*12 + 64)// 2,
+            population_size=3*K*24 + 0,  # 0 random + 72 per top-k genome
+            n_parents=(3*K*24 + 0)// 2,
             n_repeats=3,
             n_steps=1000,
             ckpt_interval=10,
-            results_dir=join(ROOT_DIR, "NSGA", "run_01"),
+            results_dir=join(ROOT_DIR, "NSGA", "run_02"),
             initial_population=initial_pop,
         )
 

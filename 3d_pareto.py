@@ -17,7 +17,7 @@ def pareto_mask(F):
     return ~dominated
 
 
-data = np.load("results/final_project_cluster/full_f.npy")
+data = np.load("NSGA/run_01/full_f.npy")
 F = data[0]  # shape (512, 3)
 
 mask = pareto_mask(F)
@@ -47,6 +47,6 @@ ax.set_title("3-Objective Pareto Front\n(Flat · Ice · Hill terrains)", pad=14)
 ax.legend(loc="upper left", fontsize=9)
 
 plt.tight_layout()
-plt.savefig("results/final_project_cluster/pareto_3d.png", dpi=150)
+plt.savefig("NSGA/run_01/pareto_3d.png", dpi=150)
 plt.show()
 print("Saved → results/final_project_cluster/pareto_3d.png")
