@@ -51,8 +51,6 @@ class EvalEnv(MujocoEnv, utils.EzPickle):
         self._ctrl_cost_weight = ctrl_cost_weight
         self._cfrc_cost_weight = cfrc_cost_weight
         self._reset_noise_scale = reset_noise_scale
-        self.initial_y = self.data.body(1).xpos[1]
-
         self._stuck_count = 0
 
         MujocoEnv.__init__(
@@ -63,6 +61,8 @@ class EvalEnv(MujocoEnv, utils.EzPickle):
             default_camera_config=default_camera_config,
             **kwargs,
         )
+
+        self.initial_y = self.data.body(1).xpos[1]
 
         self.metadata = {
             "render_modes": ["human", "rgb_array", "depth_array"],
