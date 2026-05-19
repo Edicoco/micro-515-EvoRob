@@ -1,5 +1,4 @@
 from os import path
-from typing import Dict
 
 import numpy as np
 from gymnasium import utils
@@ -9,15 +8,17 @@ from gymnasium.spaces import Box
 DEFAULT_CAMERA_CONFIG = {"distance": 5.0}
 
 
-class EvalEnv(MujocoEnv, utils.EzPickle):
-    """Generic evaluation environment for the MICRO-515 Final Project.
+class EvalHillEnv(MujocoEnv, utils.EzPickle):
+    """Hill terrain evaluation environment.
 
-    Loads any robot+terrain XML.  No assumptions are made about the robot
-    morphology, controller, or observation/action dimensions — everything is
-    inferred at runtime from the MuJoCo model.
+    Termination: robot is terminated when it flips upside-down, gets stuck
+    (velocity < 1 cm/s for > 10 s), or produces NaN/Inf accelerations.
+    Height-based termination is not used since the robot legitimately climbs.
 
-    The info dict always exposes the four keys used by the neutral leaderboard
-    reward formula (healthy_reward, x_position, ctrl_cost, cfrc_cost).
+    Training reward:  healthy_reward + x_position - ctrl_cost - cfrc_cost
+
+    The info dict always exposes the four keys required by the neutral
+    leaderboard formula: healthy_reward, x_position, ctrl_cost, cfrc_cost.
     """
 
     metadata = {"render_modes": ["human", "rgb_array", "depth_array"]}
@@ -26,36 +27,28 @@ class EvalEnv(MujocoEnv, utils.EzPickle):
         self,
         robot_path: str,
         frame_skip: int = 5,
-        default_camera_config: Dict[str, float] = DEFAULT_CAMERA_CONFIG,
-        ctrl_cost_weight: float = 0.5,
-        cfrc_cost_weight: float = 5e-4,
+        default_camera_config: dict = DEFAULT_CAMERA_CONFIG,
+        ctrl_cost_weight: float = 0.05,
+        cfrc_cost_weight: float = 5e-5,
         reset_noise_scale: float = 0.1,
         **kwargs,
     ):
-        # Accept an absolute path or resolve relative to this file's directory
         xml_file_path = robot_path if path.isabs(robot_path) else path.join(
             path.dirname(path.realpath(__file__)), robot_path
         )
 
         utils.EzPickle.__init__(
-            self,
-            xml_file_path,
-            frame_skip,
-            default_camera_config,
-            ctrl_cost_weight,
-            cfrc_cost_weight,
-            reset_noise_scale,
-            **kwargs,
+            self, xml_file_path, frame_skip, default_camera_config,
+            ctrl_cost_weight, cfrc_cost_weight, reset_noise_scale, **kwargs,
         )
 
         self._ctrl_cost_weight = ctrl_cost_weight
         self._cfrc_cost_weight = cfrc_cost_weight
         self._reset_noise_scale = reset_noise_scale
+        self._stuck_count = 0
 
         MujocoEnv.__init__(
-            self,
-            xml_file_path,
-            frame_skip,
+            self, xml_file_path, frame_skip,
             observation_space=None,
             default_camera_config=default_camera_config,
             **kwargs,
@@ -66,44 +59,75 @@ class EvalEnv(MujocoEnv, utils.EzPickle):
             "render_fps": int(np.round(1.0 / self.dt)),
         }
 
-        # Observation: qpos (skip root xy) + qvel — dimensions inferred from model
         obs_size = (self.data.qpos.size - 2) + self.data.qvel.size
         self.observation_space = Box(
             low=-np.inf, high=np.inf, shape=(obs_size,), dtype=np.float64
         )
 
-    def step(self, action):
-        x_before = self.data.qpos[0]
-        self.do_simulation(action, self.frame_skip)
-        x_after = self.data.qpos[0]
+        self.initial_y = self.data.body(1).xpos[1]
 
-        x_velocity = (x_after - x_before) / self.dt
+
+    def step(self, action):
+        xyz_before = self.data.body(1).xpos[:3].copy()
+        self.do_simulation(action, self.frame_skip)
+        xyz_after = self.data.body(1).xpos[:3].copy()
+
+
+        xyz_velocity = (xyz_after - xyz_before) / self.dt
+        x_velocity = float(xyz_velocity[0])
+        x_position = float(xyz_after[0])
+
+        y_velocity = float(xyz_velocity[1])
+        y_velocity = abs(y_velocity)  # penalize both uphill and downhill velocity
+        y_position = float(xyz_after[1])
+
+        y_offset = abs(y_position - self.initial_y)
+
+        y_offset_penalty = 2 * y_offset + 0.5 * y_velocity
+
         healthy_reward = 1.0
         ctrl_cost = float(np.sum(action ** 2) * self._ctrl_cost_weight)
         cfrc_cost = float(np.sum(self.data.cfrc_ext[1:] ** 2) * self._cfrc_cost_weight)
 
-        reward = healthy_reward + x_velocity - ctrl_cost - cfrc_cost
-        observation = self._get_obs()
-        terminated = self._is_terminated()
+        terminated = self._is_terminated(xyz_velocity)
+        if terminated:
+            healthy_reward = -15.0
+        reward = healthy_reward + x_velocity*1.5- ctrl_cost - cfrc_cost - y_offset_penalty + x_position*0.7
 
         info = {
-            "healthy_reward": -10.0 if terminated else healthy_reward,
-            "x_position": float(x_after),
+            "healthy_reward": -15.0 if terminated else healthy_reward,
+            "x_position": x_position,
             "ctrl_cost": ctrl_cost,
             "cfrc_cost": cfrc_cost,
             "x_velocity": x_velocity,
+            "torso_in_contact": self.is_torso_in_contact(),
         }
 
         if self.render_mode == "human":
             self.render()
-        return observation, reward, terminated, False, info
+        return self._get_obs(), reward, terminated, False, info
 
-    def _is_terminated(self) -> bool:
+    def _is_terminated(self, xyz_velocity: np.ndarray) -> bool:
         qacc = self.data.qacc
-        return bool(np.any(np.isnan(qacc) | np.isinf(qacc) | (np.abs(qacc) > 1e6)))
+        if np.any(np.isnan(qacc) | np.isinf(qacc) | (np.abs(qacc) > 1e6)):
+            return True
+        if self._torso_upside_down():
+            return True
+        if np.linalg.norm(np.float64(xyz_velocity[0])) < 3e-1 :
+            self._stuck_count += 1
+        elif self.is_torso_in_contact():
+            self._stuck_count += 1
+        else:
+            self._stuck_count = 0
+        if self._stuck_count > 80/self.dt:  # 10 seconds of near-zero velocity
+            return True
+        return False
+
+    def _torso_upside_down(self) -> bool:
+        R = self.data.body(1).xmat.reshape(3, 3)
+        return float(R[2, 2]) < 0.0
 
     def _get_obs(self):
-        # Skip root xy (first 2 qpos elements) to keep observations translation-invariant
         return np.concatenate((self.data.qpos.flat[2:], self.data.qvel.flat.copy()))
 
     def reset_model(self):
@@ -111,7 +135,15 @@ class EvalEnv(MujocoEnv, utils.EzPickle):
         qpos = self.init_qpos + self.np_random.uniform(-noise, noise, size=self.model.nq)
         qvel = self.init_qvel + noise ** 2 * self.np_random.standard_normal(self.model.nv)
         self.set_state(qpos, qvel)
+        self._stuck_count = 0
         return self._get_obs()
 
     def _get_reset_info(self):
         return {"x_position": float(self.data.qpos[0])}
+    
+    def is_torso_in_contact(self) -> bool:
+        torso_geom_id = self.model.body_geomadr[self.model.body("Base").id]
+        for contact in self.data.contact[: self.data.ncon]:
+            if contact.geom1 == torso_geom_id or contact.geom2 == torso_geom_id:
+                return True
+        return False

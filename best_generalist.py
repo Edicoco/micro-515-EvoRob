@@ -114,7 +114,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--source", default=join(ROOT, "NSGA/run_01"),
+        "--source", default=join(ROOT, "NSGA/run_02"),
         help="Directory containing numbered generation checkpoints",
     )
     parser.add_argument(

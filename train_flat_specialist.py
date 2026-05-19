@@ -55,7 +55,7 @@ BOUNDS        = (-10, 10)
 N_GEN         = 500
 N_REPEATS     = 3
 N_STEPS       = 1500
-CKPT_INTERVAL = 1
+CKPT_INTERVAL = 25
 RANDOM_SEED   = 42
 
 SIGMA_RESTART  = 0.00   # restart CMA-ES when sigma drops below this
