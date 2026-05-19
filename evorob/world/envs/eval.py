@@ -115,6 +115,9 @@ class EvalEnv(MujocoEnv, utils.EzPickle):
             self.render()
         return self._get_obs(), reward, terminated, False, info
 
+    def _torso_upside_down(self) -> bool:
+        R = self.data.body(1).xmat.reshape(3, 3)
+        return float(R[2, 2]) < 0.0
 
     def _is_terminated(self, xyz_velocity: np.ndarray) -> bool:
         qacc = self.data.qacc
