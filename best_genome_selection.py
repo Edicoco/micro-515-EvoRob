@@ -100,8 +100,8 @@ def build_diverse_initial_population(
     ice_top_k: np.ndarray | None = None,
     hill_top_k: np.ndarray | None = None,
     n_per_genome: int = 32,
-    ctrl_noise_std: float = 0.15,
-    body_noise_std: float = 0.15,
+    ctrl_noise_std: float = 0.007,
+    body_noise_std: float = 0.01,
     random_seed: int = 42,
 ) -> np.ndarray:
     """Build initial population with k diverse specialists per terrain.
