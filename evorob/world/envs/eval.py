@@ -1,4 +1,5 @@
 from os import path
+from typing import Dict
 
 import numpy as np
 from gymnasium import utils
@@ -8,17 +9,15 @@ from gymnasium.spaces import Box
 DEFAULT_CAMERA_CONFIG = {"distance": 5.0}
 
 
-class EvalHillEnv(MujocoEnv, utils.EzPickle):
-    """Hill terrain evaluation environment.
+class EvalEnv(MujocoEnv, utils.EzPickle):
+    """Generic evaluation environment for the MICRO-515 Final Project.
 
-    Termination: robot is terminated when it flips upside-down, gets stuck
-    (velocity < 1 cm/s for > 10 s), or produces NaN/Inf accelerations.
-    Height-based termination is not used since the robot legitimately climbs.
+    Loads any robot+terrain XML.  No assumptions are made about the robot
+    morphology, controller, or observation/action dimensions — everything is
+    inferred at runtime from the MuJoCo model.
 
-    Training reward:  healthy_reward + x_position - ctrl_cost - cfrc_cost
-
-    The info dict always exposes the four keys required by the neutral
-    leaderboard formula: healthy_reward, x_position, ctrl_cost, cfrc_cost.
+    The info dict always exposes the four keys used by the neutral leaderboard
+    reward formula (healthy_reward, x_position, ctrl_cost, cfrc_cost).
     """
 
     metadata = {"render_modes": ["human", "rgb_array", "depth_array"]}
@@ -27,28 +26,39 @@ class EvalHillEnv(MujocoEnv, utils.EzPickle):
         self,
         robot_path: str,
         frame_skip: int = 5,
-        default_camera_config: dict = DEFAULT_CAMERA_CONFIG,
+        default_camera_config: Dict[str, float] = DEFAULT_CAMERA_CONFIG,
         ctrl_cost_weight: float = 0.05,
         cfrc_cost_weight: float = 5e-5,
         reset_noise_scale: float = 0.1,
         **kwargs,
     ):
+        # Accept an absolute path or resolve relative to this file's directory
         xml_file_path = robot_path if path.isabs(robot_path) else path.join(
             path.dirname(path.realpath(__file__)), robot_path
         )
 
         utils.EzPickle.__init__(
-            self, xml_file_path, frame_skip, default_camera_config,
-            ctrl_cost_weight, cfrc_cost_weight, reset_noise_scale, **kwargs,
+            self,
+            xml_file_path,
+            frame_skip,
+            default_camera_config,
+            ctrl_cost_weight,
+            cfrc_cost_weight,
+            reset_noise_scale,
+            **kwargs,
         )
 
         self._ctrl_cost_weight = ctrl_cost_weight
         self._cfrc_cost_weight = cfrc_cost_weight
         self._reset_noise_scale = reset_noise_scale
+        self.initial_y = self.data.body(1).xpos[1]
+
         self._stuck_count = 0
 
         MujocoEnv.__init__(
-            self, xml_file_path, frame_skip,
+            self,
+            xml_file_path,
+            frame_skip,
             observation_space=None,
             default_camera_config=default_camera_config,
             **kwargs,
@@ -59,13 +69,11 @@ class EvalHillEnv(MujocoEnv, utils.EzPickle):
             "render_fps": int(np.round(1.0 / self.dt)),
         }
 
+        # Observation: qpos (skip root xy) + qvel — dimensions inferred from model
         obs_size = (self.data.qpos.size - 2) + self.data.qvel.size
         self.observation_space = Box(
             low=-np.inf, high=np.inf, shape=(obs_size,), dtype=np.float64
         )
-
-        self.initial_y = self.data.body(1).xpos[1]
-
 
     def step(self, action):
         xyz_before = self.data.body(1).xpos[:3].copy()
@@ -107,6 +115,7 @@ class EvalHillEnv(MujocoEnv, utils.EzPickle):
             self.render()
         return self._get_obs(), reward, terminated, False, info
 
+
     def _is_terminated(self, xyz_velocity: np.ndarray) -> bool:
         qacc = self.data.qacc
         if np.any(np.isnan(qacc) | np.isinf(qacc) | (np.abs(qacc) > 1e6)):
@@ -123,11 +132,8 @@ class EvalHillEnv(MujocoEnv, utils.EzPickle):
             return True
         return False
 
-    def _torso_upside_down(self) -> bool:
-        R = self.data.body(1).xmat.reshape(3, 3)
-        return float(R[2, 2]) < 0.0
-
     def _get_obs(self):
+        # Skip root xy (first 2 qpos elements) to keep observations translation-invariant
         return np.concatenate((self.data.qpos.flat[2:], self.data.qvel.flat.copy()))
 
     def reset_model(self):
@@ -135,7 +141,6 @@ class EvalHillEnv(MujocoEnv, utils.EzPickle):
         qpos = self.init_qpos + self.np_random.uniform(-noise, noise, size=self.model.nq)
         qvel = self.init_qvel + noise ** 2 * self.np_random.standard_normal(self.model.nv)
         self.set_state(qpos, qvel)
-        self._stuck_count = 0
         return self._get_obs()
 
     def _get_reset_info(self):
