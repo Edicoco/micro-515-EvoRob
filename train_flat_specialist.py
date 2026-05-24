@@ -49,7 +49,7 @@ N_WEIGHTS     = 560
 N_BODY_PARAMS = 0
 N_PARAMS      = N_WEIGHTS
 
-POP_SIZE      = 256
+POP_SIZE      = 2
 SIGMA0        = 0.05
 BOUNDS        = (-10, 10)
 N_GEN         = 500
@@ -99,7 +99,7 @@ class FlatSpecialistWorld(FinalWorld):
         genome_full = np.concatenate([genotype[:N_WEIGHTS], body])
         self.update_robot_xml(genome_full)
 
-        return self._run_env("FlatEnv-v0", self.flat_world_file, n_repeats, n_steps)
+        return self._run_env("IceEnv-v0", self.ice_world_file, n_repeats, n_steps)
 
 
 # ---------------------------------------------------------------------------
@@ -159,7 +159,7 @@ def _load_warm_start(warm_start_dir: str | None) -> np.ndarray | None:
     x0 = np.load(ctrl_path)[:N_WEIGHTS]
     print(f"  warm_start: remap from challenge 1 applied. If training is not based on a challenge 1 checkpoint, consider removing remap_challenge1_weights() to preserve original joint order.")
     print(f"  warm_start: loaded control params from {ctrl_path}  shape={x0.shape}")
-    x0 = remap_challenge1_weights(x0)
+    # x0 = remap_challenge1_weights(x0)
     print(f"  warm_start: loaded from {warm_start_dir}  (Challenge-1 joint order remapped)  shape={x0.shape}")
     return x0
 
@@ -172,18 +172,20 @@ def _save_video(world: FlatSpecialistWorld, genome: np.ndarray,
                 out_path: str, n_steps: int) -> None:
     try:
         import imageio
-        # Append standard ant body params so geno2pheno uses the correct morphology
-        # instead of the neutral fallback (0.35 m per segment).
         body = _load_best_flat_body()
         genome_full = np.concatenate([genome[:N_WEIGHTS], body])
         world.update_robot_xml(genome_full)
-        env = gym.make("FlatEnv-v0", robot_path=world.flat_world_file,
+        env = gym.make("IceEnv-v0", robot_path=world.ice_world_file,
                        render_mode="rgb_array", max_episode_steps=n_steps)
         world.controller.reset_controller(batch_size=1)
         obs, _ = env.reset(seed=RANDOM_SEED)
         frames = []
+        trajectory = []  # list of (x, y) at each timestep
         for _ in range(n_steps):
             frames.append(env.render())
+            # Record (x, y) from MuJoCo root body position
+            qpos = env.unwrapped.data.qpos
+            trajectory.append((float(qpos[0]), float(qpos[1])))
             action = world.controller.get_action(obs)
             if action.ndim > 1:
                 action = action.squeeze(0)
@@ -193,6 +195,10 @@ def _save_video(world: FlatSpecialistWorld, genome: np.ndarray,
         env.close()
         imageio.mimwrite(out_path, frames, fps=20)
         print(f"  Video saved: {out_path}")
+        # Save trajectory alongside the video
+        traj_path = out_path.replace(".mp4", "_trajectory.npy")
+        np.save(traj_path, np.array(trajectory))
+        print(f"  Trajectory saved: {traj_path}  ({len(trajectory)} steps)")
     except Exception as exc:
         print(f"  Video skipped: {exc}")
 
@@ -351,7 +357,7 @@ if __name__ == "__main__":
     parser.add_argument("--n_repeats",      type=int,   default=N_REPEATS)
     parser.add_argument("--n_steps",        type=int,   default=N_STEPS)
     parser.add_argument("--out_dir",        type=str,   default=join(ROOT_DIR, "results", "flat_specialist_cmaes_long_00"))
-    parser.add_argument("--warm_start_dir", type=str,   default=join(ROOT_DIR, "/warm_start/x_best.npy"),
+    parser.add_argument("--warm_start_dir", type=str,   default=join(ROOT_DIR, "warm_start/ice_specialist_cmaes_long/400"),
                         help="Directory with x_best.npy to warm-start CMA-ES")
     args = parser.parse_args()
     main(

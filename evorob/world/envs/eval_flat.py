@@ -30,8 +30,8 @@ class EvalFlatEnv(MujocoEnv, utils.EzPickle):
         robot_path: str,
         frame_skip: int = 5,
         default_camera_config: dict = DEFAULT_CAMERA_CONFIG,
-        ctrl_cost_weight: float = 0.15, # 0.1,
-        cfrc_cost_weight: float = 1e-3,
+        ctrl_cost_weight: float = 0.5,
+        cfrc_cost_weight: float = 5e-4,
         reset_noise_scale: float = 0.1,
         **kwargs,
     ):
@@ -59,48 +59,24 @@ class EvalFlatEnv(MujocoEnv, utils.EzPickle):
             "render_modes": ["human", "rgb_array", "depth_array"],
             "render_fps": int(np.round(1.0 / self.dt)),
         }
-        self.vel_count = 0
 
         obs_size = (self.data.qpos.size - 2) + self.data.qvel.size
         self.observation_space = Box(
             low=-np.inf, high=np.inf, shape=(obs_size,), dtype=np.float64
         )
 
-        self.initial_y = self.data.qpos[1]
-
-
     def step(self, action):
         x_before = self.data.qpos[0]
-        y_before = self.data.qpos[1]
         self.do_simulation(action, self.frame_skip)
         x_after = self.data.qpos[0]
-        y_after = self.data.qpos[1]
-        
+
         x_velocity = (x_after - x_before) / self.dt
-        y_velocity = (y_after - y_before) / self.dt
-        y_velocity = abs(y_velocity)
-
-        if x_velocity < 0.1 :
-            self.vel_count += 1
-        if x_velocity  > 0.1 :
-            self.vel_count = 0
-
-        y_divergence = abs(self.data.qpos[1] - self.initial_y)
-
-        if float(self.data.qpos[2]) < 0.35 or float(self.data.qpos[2]) > 0.9:
-            healthy_reward = -0.5
-        else:
-            healthy_reward = 1.0
-
+        healthy_reward = 1.0
         ctrl_cost = float(np.sum(action ** 2) * self._ctrl_cost_weight)
         cfrc_cost = float(np.sum(self.data.cfrc_ext[1:] ** 2) * self._cfrc_cost_weight)
 
         terminated = self._is_terminated()
-        if self.vel_count > 50 :
-            terminated = True
-        reward = healthy_reward + x_velocity * 1.5 - 0.6 * y_velocity - ctrl_cost - cfrc_cost - 0.7 * y_divergence
-        if terminated:
-            reward = -10.0
+        reward = healthy_reward + x_velocity - ctrl_cost - cfrc_cost
 
         info = {
             "healthy_reward": -10.0 if terminated else healthy_reward,
@@ -108,7 +84,6 @@ class EvalFlatEnv(MujocoEnv, utils.EzPickle):
             "ctrl_cost": ctrl_cost,
             "cfrc_cost": cfrc_cost,
             "x_velocity": x_velocity,
-            "y_velocity": y_velocity
         }
 
         if self.render_mode == "human":
@@ -119,7 +94,7 @@ class EvalFlatEnv(MujocoEnv, utils.EzPickle):
         z = float(self.data.qpos[2])
         return (
             not np.isfinite(self.state_vector()).all()
-            or z < 0.26
+            or z < 0.2
             or z > 1.0
         )
 
