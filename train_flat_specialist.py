@@ -50,7 +50,7 @@ N_BODY_PARAMS = 0
 N_PARAMS      = N_WEIGHTS
 
 POP_SIZE      = 256
-SIGMA0        = 0.01
+SIGMA0        = 0.1
 BOUNDS        = (-10, 10)
 N_GEN         = 500
 N_REPEATS     = 3
@@ -67,6 +67,26 @@ N_WORKERS = max(1, _cpus // max(1, N_REPEATS)) if IS_MAC else max(1, _cpus // (N
 # ---------------------------------------------------------------------------
 # Evaluation world (flat only)
 # ---------------------------------------------------------------------------
+
+def remap_challenge1_weights(weights: np.ndarray) -> np.ndarray:
+    """Remap Challenge 1 output-layer weights to Final Project joint order.
+
+    Challenge 1:    [back-right-hip, back-right-ankle, front-left-hip, front-left-ankle,
+                     front-right-hip, front-right-ankle, back-left-hip, back-left-ankle]
+    Final Project:  [front-left-hip, front-left-ankle, front-right-hip, front-right-ankle,
+                     back-left-hip, back-left-ankle, back-right-hip, back-right-ankle]
+    """
+    n_input, n_hidden, n_output = 27, 16, 8
+    n_con1 = n_input * n_hidden   # 432
+    n_con2 = n_hidden * n_output  # 128
+
+    input_weights  = weights[:n_con1]
+    output_weights = weights[n_con1:n_con1 + n_con2].reshape(n_output, n_hidden)
+
+    reorder = [2, 3, 4, 5, 6, 7, 0, 1]
+    output_weights_reordered = output_weights[reorder, :]
+
+    return np.concatenate([input_weights, output_weights_reordered.flatten()])
 
 class FlatSpecialistWorld(FinalWorld):
     """Evaluates a genotype on FlatEnv-v0 only."""
@@ -139,7 +159,7 @@ def _load_warm_start(warm_start_dir: str | None) -> np.ndarray | None:
     x0 = np.load(ctrl_path)[:N_WEIGHTS]
     print(f"  warm_start: remap from challenge 1 applied. If training is not based on a challenge 1 checkpoint, consider removing remap_challenge1_weights() to preserve original joint order.")
     print(f"  warm_start: loaded control params from {ctrl_path}  shape={x0.shape}")
-    # x0 = remap_challenge1_weights(x0)
+    x0 = remap_challenge1_weights(x0)
     print(f"  warm_start: loaded from {warm_start_dir}  (Challenge-1 joint order remapped)  shape={x0.shape}")
     return x0
 
