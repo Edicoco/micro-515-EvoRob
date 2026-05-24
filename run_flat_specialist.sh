@@ -19,4 +19,4 @@ python train_flat_specialist.py \
     --n_repeats 3    \
     --n_steps   1000 \
     --out_dir   results/flat_specialist_cmaes/ \
-    --warm_start_dir /warm_start/ \
+    --warm_start_dir warm_start \
