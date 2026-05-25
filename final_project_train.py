@@ -679,7 +679,7 @@ if __name__ == "__main__":
     VIDEO = False
     if not VIDEO :
         world_tmp = FinalWorld()
-        K = 4
+        K = 3
         flat_top_k, _ = load_top_k_flat(k=K)
         ice_top_k,  _ = load_top_k_ice(k=K)
         hill_top_k, _ = load_top_k_hill(k=K)
@@ -693,19 +693,19 @@ if __name__ == "__main__":
             flat_top_k=flat_top_k,
             ice_top_k=ice_top_k,
             hill_top_k=hill_top_k,
-            n_per_genome=24,
+            n_per_genome=32,
         )
         del world_tmp
         print(f"Initial population: {initial_pop.shape}")
 
         run_multi_task_evolution(
-            num_generations=500,
-            population_size=3*K*24 + 0,  # 0 random + 72 per top-k genome
-            n_parents=(3*K*24 + 0)// 2,
+            num_generations=1000,
+            population_size=3*K*32 + 0,  # 0 random + 96 per top-k genome
+            n_parents=(3*K*32 + 0)// 2,
             n_repeats=3,
-            n_steps=1000,
+            n_steps=1500,
             ckpt_interval=10,
-            results_dir=join(ROOT_DIR, "NSGA", "run_02"),
+            results_dir=join(ROOT_DIR, "results", "NSGA", "run_03"),
             initial_population=initial_pop,
         )
 

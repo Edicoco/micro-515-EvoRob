@@ -50,7 +50,7 @@ N_BODY_PARAMS = 0
 N_PARAMS      = N_WEIGHTS
 
 POP_SIZE      = 2
-SIGMA0        = 0.05
+SIGMA0        = 0.0000005
 BOUNDS        = (-10, 10)
 N_GEN         = 500
 N_REPEATS     = 3
@@ -175,7 +175,7 @@ def _save_video(world: FlatSpecialistWorld, genome: np.ndarray,
         body = _load_best_flat_body()
         genome_full = np.concatenate([genome[:N_WEIGHTS], body])
         world.update_robot_xml(genome_full)
-        env = gym.make("FlatEnv-v0", robot_path=world.flat_world_file,
+        env = gym.make("HillEnv-v0", robot_path=world.hill_world_file,
                        render_mode="rgb_array", max_episode_steps=n_steps)
         world.controller.reset_controller(batch_size=1)
         obs, _ = env.reset(seed=RANDOM_SEED)
@@ -357,7 +357,7 @@ if __name__ == "__main__":
     parser.add_argument("--n_repeats",      type=int,   default=N_REPEATS)
     parser.add_argument("--n_steps",        type=int,   default=N_STEPS)
     parser.add_argument("--out_dir",        type=str,   default=join(ROOT_DIR, "results", "flat_specialist_cmaes_long_00"))
-    parser.add_argument("--warm_start_dir", type=str,   default=join(ROOT_DIR, "results/randomized_generalist/IT_002/final"),
+    parser.add_argument("--warm_start_dir", type=str,   default=join(ROOT_DIR, "results/randomized_generalist/hill_stat/500"),
                         help="Directory with x_best.npy to warm-start CMA-ES")
     args = parser.parse_args()
     main(
