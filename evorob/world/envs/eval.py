@@ -100,6 +100,8 @@ class EvalEnv(MujocoEnv, utils.EzPickle):
 
     def _is_terminated(self) -> bool:
         qacc = self.data.qacc
+        if self._torso_upside_down():
+            return True
         return bool(np.any(np.isnan(qacc) | np.isinf(qacc) | (np.abs(qacc) > 1e6)))
 
     def _get_obs(self):
@@ -115,3 +117,7 @@ class EvalEnv(MujocoEnv, utils.EzPickle):
 
     def _get_reset_info(self):
         return {"x_position": float(self.data.qpos[0])}
+    
+    def _torso_upside_down(self) -> bool:
+        R = self.data.body(1).xmat.reshape(3, 3)
+        return float(R[2, 2]) < 0.0

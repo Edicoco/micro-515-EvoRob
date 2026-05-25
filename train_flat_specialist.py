@@ -99,7 +99,7 @@ class FlatSpecialistWorld(FinalWorld):
         genome_full = np.concatenate([genotype[:N_WEIGHTS], body])
         self.update_robot_xml(genome_full)
 
-        return self._run_env("FlatEnv-v0", self.flat_world_file, n_repeats, n_steps)
+        return self._run_env("HillEnv-v0", self.hill_world_file, n_repeats, n_steps)
 
 
 # ---------------------------------------------------------------------------

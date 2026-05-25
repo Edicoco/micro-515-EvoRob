@@ -470,7 +470,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--flat_dir", type=str,
-        default=join(ROOT_DIR, "results/randomized_generalist/IT_001/990"),
+        # default=join(ROOT_DIR, "results/randomized_generalist/IT_001/990"),
+        default=join(ROOT_DIR, "results/randomized_generalist/flat_stat/450"),    
         help="Directory containing flat specialist x_best.npy",
     )
     parser.add_argument(
