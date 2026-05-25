@@ -36,7 +36,7 @@ from final_project_train import FinalWorld
 
 ROOT_DIR  = get_project_root()
 N_WEIGHTS = 560
-N_RUNS    = 50    # independent episodes per cell
+N_RUNS    = 20    # independent episodes per cell
 N_STEPS   = 500   # steps per episode (shorter for speed)
 ALPHA     = 0.05
 
@@ -475,7 +475,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--ice_dir", type=str,
-        default=join(ROOT_DIR, "results/hill_specialist_cmaes_medium/400"),
+        default=join(ROOT_DIR, "results/randomized_generalist/IT_002/final"),
         help="Directory containing ice specialist x_best.npy",
     )
     parser.add_argument(

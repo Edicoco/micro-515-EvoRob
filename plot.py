@@ -59,7 +59,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("run_dir", nargs="?",
-                        default=os.path.join(get_project_root(), "results/randomized_generalist/IT_001"))
+                        default=os.path.join(get_project_root(), "results/randomized_generalist/IT_002"))
     parser.add_argument("--save", type=str, default=None, help="Save figure to this path instead of showing")
     args = parser.parse_args()
 
