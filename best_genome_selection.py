@@ -24,9 +24,9 @@ ROOT_DIR  = get_project_root()
 _RESULTS  = join(ROOT_DIR, "results")
 _WARM_START = join(ROOT_DIR, "warm_start")
 
-FLAT_CKPT_DIR = join(_WARM_START, "/NSGA/flat_stat")
-HILL_CKPT_DIR = join(_WARM_START, "/NSGA/hill_stat")
-ICE_CKPT_DIR  = join(_WARM_START, "/NSGA/IT_002")
+FLAT_CKPT_DIR = join(_WARM_START, "warm_start/NSGA/flat_stat")
+HILL_CKPT_DIR = join(_WARM_START, "warm_start/NSGA/hill_stat")
+ICE_CKPT_DIR  = join(_WARM_START, "warm_start/NSGA/IT_002")
 
 
 # ---------------------------------------------------------------------------
