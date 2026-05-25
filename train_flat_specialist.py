@@ -50,7 +50,7 @@ N_BODY_PARAMS = 0
 N_PARAMS      = N_WEIGHTS
 
 POP_SIZE      = 2
-SIGMA0        = 0.000005
+SIGMA0        = 0.05
 BOUNDS        = (-10, 10)
 N_GEN         = 500
 N_REPEATS     = 3
